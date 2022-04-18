@@ -32,13 +32,29 @@ class Base:
 
 class Stochastic_Process(Base):
 
-    def __init__(self, one):
-        self.one = one
+    def __init__(self, theta, kappa, sigma, r):
+        self.theta = theta
+        self.kappa = kappa
+        self.sigma = sigma
+        self.r = r
 
     def __repr__(self):
 
         return f'nothing'
 
+    def characterisic_VG(self, S0, T, N):
+        # w is the weight similar to the w in Heston
+        w = - np.log(1 - self.theta * self.kappa - self.kappa/2 * self.sigma**2) / self.kappa
+        rho = 1/ self.kappa
+        gv = si.gamma(rho * T).rvs(N) / rho
+        nv = si.norm.rvs(0,1,N)
+        vGamma = self.theta * gv + self.sigma * np.sqrt(gv) * nv
+        sT = S0 * np.exp((self.r - w) * T +vGamma)
+        return sT.reshape((N,1))
+
+    def monteCarloVG(self, T, N, M):
+        dt = T / (N - 1)
+        X0
 
 class Asain_Options(Stochastic_Process):
 
@@ -124,10 +140,10 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
 
     AO = Asain_Options(1)
     print('this is just a test')
-    A_call = AO.vanilla_Asain_Call(100, 100, 1, 0, 0.25,253,10000)
+    A_call = AO.vanilla_Asain_Call(100, 105, 1, 0, 0.25,253,10000)
     print(f'Asain call {A_call}')
 
-    A_put = AO.vanilla_Asain_Put(100, 100, 1, 0, 0.25, 253, 10000)
+    A_put = AO.vanilla_Asain_Put(100, 105, 1, 0, 0.25, 253, 10000)
     print(f'Asain put {A_put}')
 
 
