@@ -52,12 +52,23 @@ class Stochastic_Process(Base):
         sT = S0 * np.exp((self.r - w) * T + vGamma)
         return sT.reshape((N,1))
 
-    def monteCarloVG(self, T, N, M):
+    def monteCarloVG_tc(self, T, N, M):                                                            # time changed Brownian motion VG process
         dt = T / (N - 1)
         X0 = np.zeros((M,1))
-        gv = si.gamma(dt / self.kappa, scale=self.kappa).rvs(size=(M,N-1))
-        nv = si.norm.rvs(loc=0, scale=1, size=(M,N-1))
+        gv = si.gamma(dt / self.kappa, scale=self.kappa).rvs(size=(M, N-1))
+        nv = si.norm.rvs(loc=0, scale=1, size=(M, N-1))
         steps = self.r * dt + self.theta * gv + self.sigma * np.sqrt(gv) * nv
+        X = np.concatenate((X0, steps), axis=1).cumsum(1)
+        return X
+
+    def monteCarloVG_dg(self, T, N, M):
+        dt = T / (N - 1)
+        X0 = np.zeros((M, 1))
+        mu_p = 0.5 * np.sqrt(self.theta ** 2 + (2 * self.sigma ** 2) / self.kappa) + self.theta / 2
+        mu_q = 0.5 * np.sqrt(self.theta ** 2 + (2 * self.sigma ** 2) / self.kappa) - self.theta / 2
+        gvPlus = si.gamma(dt / self.kappa, scale=self.kappa*mu_q).rvs(size=(M, N-1))
+        gvMinus = si.gamma(dt / self.kappa, scale=self.kappa*mu_p).rvs(size=(M, N-1))
+        steps = gvPlus - gvMinus
         X = np.concatenate((X0, steps), axis=1).cumsum(1)
         return X
 
@@ -152,8 +163,12 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'Asain put {A_put}')
 
     sp = Stochastic_Process(-0.1, 0.1, 0.2, 0.031)
-    vg = sp.monteCarloVG(2,504,10)
+    vg = sp.monteCarloVG_tc(2,504,10)
     plt.plot(vg.T)
+    plt.show()
+
+    vg2 = sp.monteCarloVG_dg(2, 504, 20)
+    plt.plot(vg2.T)
     plt.show()
 
 
