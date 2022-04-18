@@ -49,12 +49,17 @@ class Stochastic_Process(Base):
         gv = si.gamma(rho * T).rvs(N) / rho
         nv = si.norm.rvs(0,1,N)
         vGamma = self.theta * gv + self.sigma * np.sqrt(gv) * nv
-        sT = S0 * np.exp((self.r - w) * T +vGamma)
+        sT = S0 * np.exp((self.r - w) * T + vGamma)
         return sT.reshape((N,1))
 
     def monteCarloVG(self, T, N, M):
         dt = T / (N - 1)
-        X0
+        X0 = np.zeros((M,1))
+        gv = si.gamma(dt / self.kappa, scale=self.kappa).rvs(size=(M,N-1))
+        nv = si.norm.rvs(loc=0, scale=1, size=(M,N-1))
+        steps = self.r * dt + self.theta * gv + self.sigma * np.sqrt(gv) * nv
+        X = np.concatenate((X0, steps), axis=1).cumsum(1)
+        return X
 
 class Asain_Options(Stochastic_Process):
 
@@ -146,7 +151,10 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     A_put = AO.vanilla_Asain_Put(100, 105, 1, 0, 0.25, 253, 10000)
     print(f'Asain put {A_put}')
 
-
+    sp = Stochastic_Process(-0.1, 0.1, 0.2, 0.031)
+    vg = sp.monteCarloVG(2,504,10)
+    plt.plot(vg.T)
+    plt.show()
 
 
 
