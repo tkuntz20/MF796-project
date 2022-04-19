@@ -120,6 +120,8 @@ class Asain_Options(Stochastic_Process):
         return premium
 
 
+
+
 class Density_Comparison(Asain_Options):
 
     def __init__(self, one):
@@ -167,7 +169,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     plt.plot(vg.T)
     plt.show()
 
-    vg2 = sp.monteCarloVG_dg(2, 504, 20)
+    vg2 = sp.monteCarloVG_dg(2, 504, 200)
     plt.plot(vg2.T)
     plt.show()
 
