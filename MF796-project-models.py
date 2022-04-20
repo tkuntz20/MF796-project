@@ -52,7 +52,7 @@ class Stochastic_Process(Base):
         sT = S0 * np.exp((self.r - w) * T + vGamma)
         return sT.reshape((N,1))
 
-    def monteCarloVG_tc(self, T, N, M):                                                            # time changed Brownian motion VG process
+    def monteCarloVG_tc(self, T, N, M):                                                                                  # time changed Brownian motion VG process
         dt = T / (N - 1)
         X0 = np.zeros((M,1))
         gv = si.gamma(dt / self.kappa, scale=self.kappa).rvs(size=(M, N-1))
@@ -61,7 +61,7 @@ class Stochastic_Process(Base):
         X = np.concatenate((X0, steps), axis=1).cumsum(1)
         return X
 
-    def monteCarloVG_dg(self, T, N, M):
+    def monteCarloVG_dg(self, T, N, M):                                                                                 # Monte Carlo simulation via difference of gammas
         dt = T / (N - 1)
         X0 = np.zeros((M, 1))
         mu_p = 0.5 * np.sqrt(self.theta ** 2 + (2 * self.sigma ** 2) / self.kappa) + self.theta / 2
