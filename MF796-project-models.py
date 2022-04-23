@@ -97,6 +97,7 @@ class Options(StochasticProcess):
             S_avg = np.average(S)
             sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
         premium = math.exp(-r * T) * (sumpayoff / M)
+        print(f'average is:  {S_avg},  sum of S_path/N+1:  {np.sum(S)/(N+1)}\n')
         return premium
 
     def vanilla_Asain_Put_fixed(self, S0, K, T, r, sigma, N, M):
@@ -164,47 +165,53 @@ class Options(StochasticProcess):
         S = sp.random.rand(N + 1)
         sumpayoff = 0.0
         premium = 0.0
-        indicator = 0.0
         dt = T / N
         for j in range(M):
             S[0] = S0
+            indicator = 0.0
             for i in range(N):
-                epsilon = sp.random.randn(1)
-                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
-            running_avg = np.average(S)
-            if running_avg < b:
-                S_avg = 0
-                sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
-            else:
-                S_avg = np.average(S)
-                sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
-                indicator += 1
+                # indicator should act like a digital option
+                if S[i] < b:
+                    epsilon = sp.random.randn(1)
+                    S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+                    indicator += 1
+                else:
+                    S[i + 1] = S[i] * 0
+                    indicator += 0
+            # S_avg = np.average(S)
+            S_avg = np.sum(S)
+            # print(f'average:  {S_avg}')
+            # print(f'indicator:  {indicator}')
+            sumpayoff += max(0, (S_avg / (indicator)) - K) * np.exp(-r * T)
         premium = math.exp(-r * T) * (sumpayoff / M)
 
-        return premium * (indicator / M)
+        return premium
 
     def bnp_paribas_Asain_put(self, S0, K, T, r, sigma, N, M, b):
         S = sp.random.rand(N + 1)
         sumpayoff = 0.0
         premium = 0.0
-        indicator = 0.0
         dt = T / N
         for j in range(M):
             S[0] = S0
+            indicator = 0.0
             for i in range(N):
-                epsilon = sp.random.randn(1)
-                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
-            running_avg = np.average(S)
-            if running_avg < b:
-                S_avg = 0
-                sumpayoff += max(0, K - S_avg) * np.exp(-r * T)
-            else:
-                S_avg = np.average(S)
-                sumpayoff += max(0, K - S_avg) * np.exp(-r * T)
-                indicator += 1
+                # indicator should act like a digital option
+                if S[i] > b:
+                    epsilon = sp.random.randn(1)
+                    S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+                    indicator += 1
+                else:
+                    S[i + 1] = S[i] * 0
+                    indicator += 0
+            #S_avg = np.average(S)
+            S_avg = np.sum(S)
+            #print(f'average:  {S_avg}')
+            #print(f'indicator:  {indicator}')
+            sumpayoff += max(0, K - (S_avg / (indicator))) * np.exp(-r * T)
         premium = math.exp(-r * T) * (sumpayoff / M)
 
-        return premium * (indicator / M)
+        return premium
 
 
 
@@ -243,12 +250,11 @@ class Back_Test(Density_Comparison):
 if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     AO = Options(-0.1, 0.1, 0.25, 0.031)
-    print('this is just a test')
-    A_call = AO.vanilla_Asain_Call_fixed(100, 105, 1, 0, 0.25,253,1000)
+    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
     print(f'Asain call {A_call}')
 
-    A_put = AO.vanilla_Asain_Put_fixed(100, 105, 1, 0, 0.25, 253, 1000)
-    print(f'Asain put {A_put}')
+    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
+    print(f'Asain put {A_put}\n')
 
     s_p = StochasticProcess(-0.1, 0.1, 0.2, 0.031)
     vg = s_p.monteCarloVG_tc(2,504,100)
@@ -263,11 +269,11 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
 
     #print(vg2)
 
-    print(f'the geometric call values is: {AO.geometric_Asain_Call(100, 105, 1, 0, 0.25 ,253 ,10)}')
-    print(f'the geometric put values is: {AO.geometric_Asain_Put(100, 105, 1, 0, 0.25 ,253 ,10)}')
-    print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 105, 1, 0, 0.25 ,253 ,10 ,1)}')
-    print(f'the conditional call values is: {AO.bnp_paribas_Asain_call(100, 105, 1, 0, 0.25 ,253 ,10, 50)}')
-    print(f'the conditional put values is: {AO.bnp_paribas_Asain_put(100, 105, 1, 0, 0.25, 253, 10, 50)}')
+    print(f'the geometric call values is:       {AO.geometric_Asain_Call(100, 100, 1, 0, 0.25 ,252 ,10000)}')
+    print(f'the geometric put values is:        {AO.geometric_Asain_Put(100, 100, 1, 0, 0.25 ,252 ,10000)}')
+    print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 100, 1, 0, 0.25 ,253 ,10000 ,1)}')
+    print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(100, 100, 1, 0.0, 0.25 ,252 ,10000, 130)}')
+    print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(100, 100, 1, 0.0, 0.25, 252, 10000, 70)}')
 
 
 
