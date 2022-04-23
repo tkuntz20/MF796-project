@@ -164,22 +164,47 @@ class Options(StochasticProcess):
         S = sp.random.rand(N + 1)
         sumpayoff = 0.0
         premium = 0.0
+        indicator = 0.0
         dt = T / N
         for j in range(M):
             S[0] = S0
             for i in range(N):
                 epsilon = sp.random.randn(1)
                 S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
-            S_avg = np.average(S)
-            sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
+            running_avg = np.average(S)
+            if running_avg < b:
+                S_avg = 0
+                sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
+            else:
+                S_avg = np.average(S)
+                sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
+                indicator += 1
         premium = math.exp(-r * T) * (sumpayoff / M)
 
-        return premium
+        return premium * (indicator / M)
 
-    def bnp_paribas_Asain_put(self, S0, K, T, r, sigma, N, M):
+    def bnp_paribas_Asain_put(self, S0, K, T, r, sigma, N, M, b):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        indicator = 0.0
+        dt = T / N
+        for j in range(M):
+            S[0] = S0
+            for i in range(N):
+                epsilon = sp.random.randn(1)
+                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+            running_avg = np.average(S)
+            if running_avg < b:
+                S_avg = 0
+                sumpayoff += max(0, K - S_avg) * np.exp(-r * T)
+            else:
+                S_avg = np.average(S)
+                sumpayoff += max(0, K - S_avg) * np.exp(-r * T)
+                indicator += 1
+        premium = math.exp(-r * T) * (sumpayoff / M)
 
-
-        return
+        return premium * (indicator / M)
 
 
 
@@ -241,7 +266,8 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'the geometric call values is: {AO.geometric_Asain_Call(100, 105, 1, 0, 0.25 ,253 ,10)}')
     print(f'the geometric put values is: {AO.geometric_Asain_Put(100, 105, 1, 0, 0.25 ,253 ,10)}')
     print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 105, 1, 0, 0.25 ,253 ,10 ,1)}')
-
+    print(f'the conditional call values is: {AO.bnp_paribas_Asain_call(100, 105, 1, 0, 0.25 ,253 ,10, 50)}')
+    print(f'the conditional put values is: {AO.bnp_paribas_Asain_put(100, 105, 1, 0, 0.25, 253, 10, 50)}')
 
 
 
