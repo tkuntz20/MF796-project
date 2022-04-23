@@ -183,7 +183,7 @@ class Options(StochasticProcess):
             # print(f'average:  {S_avg}')
             # print(f'indicator:  {indicator}')
             sumpayoff += max(0, (S_avg / (indicator)) - K) * np.exp(-r * T)
-        premium = math.exp(-r * T) * (sumpayoff / M)
+        premium = (sumpayoff / M)
 
         return premium
 
@@ -209,7 +209,7 @@ class Options(StochasticProcess):
             #print(f'average:  {S_avg}')
             #print(f'indicator:  {indicator}')
             sumpayoff += max(0, K - (S_avg / (indicator))) * np.exp(-r * T)
-        premium = math.exp(-r * T) * (sumpayoff / M)
+        premium = (sumpayoff / M)
 
         return premium
 
@@ -272,8 +272,8 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'the geometric call values is:       {AO.geometric_Asain_Call(100, 100, 1, 0, 0.25 ,252 ,10000)}')
     print(f'the geometric put values is:        {AO.geometric_Asain_Put(100, 100, 1, 0, 0.25 ,252 ,10000)}')
     print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 100, 1, 0, 0.25 ,253 ,10000 ,1)}')
-    print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(100, 100, 1, 0.0, 0.25 ,252 ,10000, 130)}')
-    print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(100, 100, 1, 0.0, 0.25, 252, 10000, 70)}')
+    print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(100, 100, 1, 0.0, 0.25 ,252 ,10000, 150)}')
+    print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(100, 100, 1, 0.0, 0.25, 252, 10000, 50)}')
 
 
 
