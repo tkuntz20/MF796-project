@@ -1,0 +1,172 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:x="urn:schemas-microsoft-com:office:excel"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<meta name=ProgId content=Excel.Sheet>
+<meta name=Generator content="Microsoft Excel 9">
+<!--[if gte mso 9]><xml>
+ <o:DocumentProperties>
+  <o:LastAuthor>Wen Li</o:LastAuthor>
+  <o:LastSaved>2002-09-25T13:28:32Z</o:LastSaved>
+  <o:Version>9.4402</o:Version>
+ </o:DocumentProperties>
+</xml><![endif]-->
+<style>
+<!--table
+	{mso-displayed-decimal-separator:"\.";
+	mso-displayed-thousand-separator:"\,";}
+@page
+	{margin:1.0in .75in 1.0in .75in;
+	mso-header-margin:.5in;
+	mso-footer-margin:.5in;}
+tr
+	{mso-height-source:auto;}
+col
+	{mso-width-source:auto;}
+br
+	{mso-data-placement:same-cell;}
+.style0
+	{
+	text-align:general;
+	vertical-align:bottom;
+	white-space:nowrap;
+	mso-rotate:0;
+	mso-background-source:auto;
+	mso-pattern:auto;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Arial;
+	mso-generic-font-family:auto;
+	mso-font-charset:0;
+	border:none;
+	mso-protection:locked visible;
+	mso-style-name:Normal;
+	mso-style-id:0;}
+td
+	{mso-style-parent:style0;
+	padding-top:1px;
+	padding-right:1px;
+	padding-left:1px;
+	mso-ignore:padding;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Arial;
+	mso-generic-font-family:auto;
+	mso-font-charset:0;
+	
+	text-align:general;
+	vertical-align:bottom;
+	border:none;
+	mso-background-source:auto;
+	mso-pattern:auto;
+	mso-protection:locked visible;
+	white-space:nowrap;
+	mso-rotate:0;}
+.xl24
+	{mso-style-parent:style0;
+	font-size:14.0pt;
+	font-weight:700;
+	font-family:Arial;
+	mso-font-charset:0;}
+.blppct
+	{mso-style-parent:style0;
+	padding-top:1px;
+	padding-right:1px;
+	padding-left:1px;
+	mso-ignore:padding;
+	color:windowtext;
+	font-size:10.0pt;
+	font-weight:400;
+	font-style:normal;
+	text-decoration:none;
+	font-family:Arial;
+	mso-generic-font-family:auto;
+	mso-font-charset:0;
+	mso-number-format:Percent;
+	text-align:general;
+	vertical-align:bottom;
+	border:none;
+	mso-background-source:auto;
+	mso-pattern:auto;
+	mso-protection:locked visible;
+	white-space:nowrap;
+	mso-rotate:0;}
+.blptext
+     {mso-number-format:\@;}
+.blpdate
+	{mso-style-parent:style0;
+	mso-number-format:"mm\/dd\/yyyy\;\@";}
+-->
+</style>
+<!--[if gte mso 9]><xml>
+ <x:ExcelWorkbook>
+  <x:ExcelWorksheets>
+   <x:ExcelWorksheet>
+    <x:Name>Book1</x:Name>
+    <x:WorksheetOptions>
+     <x:Selected/>
+     <x:Panes>
+      <x:Pane>
+       <x:Number>3</x:Number>
+       <x:ActiveRow>27</x:ActiveRow>
+       <x:ActiveCol>17</x:ActiveCol>
+      </x:Pane>
+     </x:Panes>
+     <x:ProtectContents>False</x:ProtectContents>
+     <x:ProtectObjects>False</x:ProtectObjects>
+     <x:ProtectScenarios>False</x:ProtectScenarios>
+    </x:WorksheetOptions>
+   </x:ExcelWorksheet>
+  </x:ExcelWorksheets>
+  <x:WindowHeight>10005</x:WindowHeight>
+  <x:WindowWidth>10005</x:WindowWidth>
+  <x:WindowTopX>120</x:WindowTopX>
+  <x:WindowTopY>135</x:WindowTopY>
+  <x:ProtectStructure>False</x:ProtectStructure>
+  <x:ProtectWindows>False</x:ProtectWindows>
+ </x:ExcelWorkbook>
+</xml><![endif]-->
+</head>
+
+<body link=blue vlink=purple>
+<table>
+<tr><td >USD</td><td >ARS</td><td ></td><td >Bloomberg BGN</td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td></tr>
+<tr><td ></td><td >ATM</td><td ></td><td >25D Call USD</td><td ></td><td >25D Put USD</td><td ></td><td >10D Call USD</td><td ></td><td >10D Put USD</td><td ></td></tr>
+<tr><td ></td><td >Mid</td><td >Spread</td><td >Mid</td><td >Spread</td><td >Mid</td><td >Spread</td><td >Mid</td><td >Spread</td><td >Mid</td><td >Spread</td></tr>
+<tr><td >1D</td><td >4.740</td><td >8.500</td><td >0.174</td><td >0.348</td><td >195.393</td><td >11.031</td><td >0.093</td><td >0.186</td><td >195.393</td><td >20.043</td></tr>
+<tr><td >1W</td><td >5.065</td><td >2.700</td><td >0.183</td><td >0.366</td><td >196.365</td><td >3.712</td><td >0.098</td><td >0.196</td><td >196.365</td><td >6.763</td></tr>
+<tr><td >2W</td><td >4.045</td><td >2.350</td><td >0.110</td><td >0.221</td><td >195.474</td><td >3.362</td><td >0.059</td><td >0.118</td><td >195.474</td><td >6.134</td></tr>
+<tr><td >3W</td><td >13.475</td><td >2.230</td><td >1.161</td><td >2.323</td><td >208.389</td><td >3.331</td><td >0.643</td><td >1.287</td><td >208.389</td><td >6.085</td></tr>
+<tr><td >1M</td><td >17.028</td><td >3.305</td><td >1.433</td><td >2.866</td><td >135.757</td><td >4.720</td><td >0.881</td><td >1.761</td><td >236.609</td><td >9.633</td></tr>
+<tr><td >2M</td><td >19.005</td><td >3.090</td><td >1.738</td><td >3.476</td><td >122.456</td><td >4.570</td><td >1.035</td><td >2.070</td><td >203.179</td><td >9.502</td></tr>
+<tr><td >3M</td><td >19.488</td><td >3.135</td><td >1.778</td><td >3.557</td><td >130.752</td><td >4.933</td><td >1.048</td><td >2.095</td><td >224.591</td><td >11.032</td></tr>
+<tr><td >4M</td><td >20.193</td><td >3.115</td><td >1.760</td><td >3.521</td><td >139.100</td><td >5.194</td><td >1.031</td><td >2.061</td><td >246.915</td><td >12.616</td></tr>
+<tr><td >5M</td><td >18.210</td><td >3.137</td><td >1.751</td><td >3.501</td><td >58.118</td><td >4.417</td><td >1.019</td><td >2.038</td><td >247.849</td><td >13.823</td></tr>
+<tr><td >6M</td><td >21.688</td><td >3.205</td><td >1.715</td><td >3.430</td><td >130.621</td><td >5.592</td><td >0.995</td><td >1.989</td><td >264.082</td><td >16.299</td></tr>
+<tr><td >9M</td><td >24.422</td><td >3.115</td><td >1.652</td><td >3.304</td><td >245.010</td><td >10.089</td><td >0.948</td><td >1.895</td><td >245.321</td><td >18.188</td></tr>
+<tr><td >1Y</td><td >25.850</td><td >3.100</td><td >1.320</td><td >2.640</td><td >252.954</td><td >13.161</td><td >0.770</td><td >1.539</td><td >253.853</td><td >23.660</td></tr>
+<tr><td >18M</td><td >28.650</td><td >4.840</td><td >0.631</td><td >1.261</td><td >265.660</td><td >34.721</td><td >0.372</td><td >0.744</td><td >270.952</td><td >64.159</td></tr>
+<tr><td >2Y</td><td >61.753</td><td >5.315</td><td >27.483</td><td >4.085</td><td >81.970</td><td >7.202</td><td >17.804</td><td >7.724</td><td >127.553</td><td >18.285</td></tr>
+<tr><td >3Y</td><td >167.657</td><td >100.000</td><td >31.703</td><td >3.270</td><td >101.461</td><td >8.176</td><td >22.188</td><td >6.104</td><td >139.897</td><td >22.145</td></tr>
+<tr><td >4Y</td><td >175.532</td><td >100.000</td><td >34.483</td><td >2.806</td><td >106.799</td><td >9.063</td><td >24.311</td><td >5.215</td><td >142.063</td><td >26.182</td></tr>
+<tr><td >5Y</td><td >177.994</td><td >100.000</td><td >36.158</td><td >2.514</td><td >107.566</td><td >9.876</td><td >25.209</td><td >4.655</td><td >140.474</td><td >30.035</td></tr>
+<tr><td >6Y</td><td >179.488</td><td >100.000</td><td >37.645</td><td >2.313</td><td >107.312</td><td >10.785</td><td >26.364</td><td >4.242</td><td >138.336</td><td >34.247</td></tr>
+<tr><td >7Y</td><td >180.518</td><td >100.000</td><td >39.240</td><td >2.173</td><td >106.658</td><td >11.775</td><td >27.145</td><td >3.938</td><td >136.119</td><td >38.720</td></tr>
+<tr><td >10Y</td><td >178.887</td><td >100.000</td><td >0.000</td><td >0.000</td><td >100.427</td><td >14.052</td><td >26.900</td><td >3.423</td><td >126.189</td><td >48.594</td></tr>
+<tr><td >15Y</td><td >177.641</td><td >100.000</td><td >0.000</td><td >0.000</td><td >94.117</td><td >19.577</td><td >26.712</td><td >3.033</td><td >115.852</td><td >65.663</td></tr>
+<tr><td >20Y</td><td >177.047</td><td >100.000</td><td >0.000</td><td >0.000</td><td >90.089</td><td >27.149</td><td >26.623</td><td >2.866</td><td >109.208</td><td >79.748</td></tr>
+<tr><td >25Y</td><td >176.662</td><td >100.000</td><td >0.000</td><td >0.000</td><td >87.183</td><td >36.261</td><td >26.565</td><td >2.801</td><td >104.439</td><td >90.424</td></tr>
+<tr><td >30Y</td><td >176.416</td><td >100.000</td><td >0.000</td><td >0.000</td><td >84.968</td><td >45.857</td><td >26.528</td><td >2.802</td><td >100.818</td><td >98.911</td></tr>
+<tr><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td></tr>
+<tr><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td><td ></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+</body></html>
