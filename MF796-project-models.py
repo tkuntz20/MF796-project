@@ -381,7 +381,11 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
         threeM = BL.strikeTransform(type, volDictionary[row][1] / 100, 6 / 12, delta)
         table[row] = [oneM, threeM]
     volTable = pd.DataFrame.from_dict(table, orient='index', columns=['1M', '3M'])
-    print(volTable)
+    print(f'This is the transformed strike tabel: \n {volTable}')
+
+    # pull in USDTRY vol grid
+    USDTRY_grid = pd.read_csv('USDTRY_04282022_grid.csv')
+    print(USDTRY_grid)
 
     # part (b)
     strikeList = np.linspace(75, 115, 500)
