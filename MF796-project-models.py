@@ -306,9 +306,9 @@ class Breeden_Litzenberger_Euro(Options):
     def strike_transform_euro(self,type, sigma, expiry, delta):
         transform = si.norm.ppf(delta)
         if type == 'P':
-            K = 100 * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
+            K = 5.48 * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
         else:
-            K = 100 * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
+            K = 5.48 * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
         return K
 
     def gamma_transform_euro(self,S,K,T,r,sigma,h):
@@ -325,7 +325,7 @@ class Breeden_Litzenberger_Euro(Options):
         return pdf
 
     def constant_volatiltiy_euro(self,S,T,r,sigma,h):
-        K = np.linspace(60, 150, 100)
+        K = np.linspace(3, 12, 100)
         pdf = []
         for i, k in enumerate(K):
             p = np.exp(r*T) * self.gamma_transform_euro(S, k, T, r, sigma,h)
@@ -363,9 +363,9 @@ class Breeden_Litzenberger_Asian(Options):
     def strike_transform_asian(self,type, sigma, expiry, delta):
         transform = si.norm.ppf(delta)
         if type == 'P':
-            K = 100 * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
+            K = 5.48 * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
         else:
-            K = 100 * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
+            K = 5.48 * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
         return K
 
     def gamma_transform_asian(self,S,K,T,r,sigma,h):
@@ -382,7 +382,7 @@ class Breeden_Litzenberger_Asian(Options):
         return pdf
 
     def constant_volatiltiy_asian(self,S,T,r,sigma,h):
-        K = np.linspace(60, 150, 100)
+        K = np.linspace(3, 12, 100)
         pdf = []
         for i, k in enumerate(K):
             p = np.exp(r*T) * self.gamma_transform_asian(S, k, T, r, sigma,h)
@@ -485,14 +485,14 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
 
     # Volatility table-------------------------------------------------
     # pull in USDTRY vol grid
-    USDTRY_grid = pd.read_csv('USDBRL_04282022_grid.csv')
+    USDTRY_grid = pd.read_csv('USDTRY_04282022_grid.csv')
     base = Base(1)
     dict, df = base.delta_options_grid(USDTRY_grid,'ExpiryStrike', Tenorlst)
     print(f'\n the dictionary from base: \n{dict}')
     print(f'\n the df from dict from base is: \n{df}')
 
-    S = 100
-    K = 100
+    S = 5.48
+    K = 5.48
     T = 0
     r = 0.0
     sigma = 0
@@ -503,7 +503,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'The Asian transformed strike tabel: \n {euro_ST}')
 
     # part (b)
-    strikeList = np.linspace(75, 150, 100)
+    strikeList = np.linspace(3, 12, 100)
     interp1M_euro = np.polyfit(euro_ST['3M'], df['3M'] / 100, 2)
     interp3M_euro = np.polyfit(euro_ST['1W'], df['1W'] / 100, 2)
     oneMvol1 = np.poly1d(interp1M_euro)(strikeList)
@@ -523,7 +523,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'The Asian transformed strike tabel: \n {asain_ST}')
 
     # part (b)
-    st_asian = np.linspace(75, 150, 100)
+    st_asian = np.linspace(3, 12, 100)
     asian_3m = np.polyfit(asain_ST['3M'], df['3M'] / 100, 2)
     asian_6m = np.polyfit(asain_ST['1W'], df['1W'] / 100, 2)
     a3M_vol = np.poly1d(asian_3m)(st_asian)
