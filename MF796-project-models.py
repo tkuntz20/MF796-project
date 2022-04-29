@@ -29,6 +29,45 @@ class Base:
 
         return f'nothing'
 
+    def delta_options_grid(self, vol_df, setIndex, columnNames):
+        vol_df = vol_df.set_index(setIndex)
+        # print()
+        dict = vol_df.T.to_dict('list')
+        USDTRY_df = pd.DataFrame.from_dict(dict, orient='index',columns=columnNames)
+        return dict, USDTRY_df
+
+    def print_risk_neutral_density(self, pdf1, type1, pdf2, type2, strike_lst, expiry):
+        plt.plot(strike_lst, pdf1, label=f'{expiry} volatility {type1}', linewidth=2, color='y')
+        plt.plot(strike_lst, pdf2, label=f'{expiry} volatility {type2}', linewidth=2, color='b')
+        plt.xlabel('Strike Range')
+        plt.ylabel('Density')
+        plt.title('Risk-Neutral Market Implied Densities')
+        plt.legend()
+        plt.grid(linestyle='--', linewidth=0.75)
+        plt.show()
+        return
+
+    def print_risk_neutral_const(self, cpdf1, type1, cpdf2, type2, expiry):
+        plt.plot(cpdf1[1], cpdf1[0], label=f'{expiry} volatility {type1}', linewidth=2, color='y')
+        plt.plot(cpdf2[1], cpdf2[0], label=f'{expiry} volatility {type2}', linewidth=2, color='b')
+        plt.xlabel('Strike Range')
+        plt.ylabel('Density')
+        plt.title('Risk-Neutral Densities(const. vol)')
+        plt.legend()
+        plt.grid(linestyle='--', linewidth=0.75)
+        plt.show()
+        return
+
+    def print_strike_check(self, vol1, type1, vol2, type2, strikelst, expiry):
+        plt.plot(strikelst, vol1, color='y', label=f'{expiry} vol {type1}')
+        plt.plot(strikelst, vol2, color='b', label=f'{expiry} vol {type2}')
+        plt.xlabel('Strike Range')
+        plt.ylabel('Volatilities')
+        plt.title('Strike Against Volatility')
+        plt.legend()
+        plt.grid(linestyle='--', linewidth=0.75)
+        plt.show()
+        return
 
 class StochasticProcess(Base):
 
@@ -235,7 +274,7 @@ class Options(StochasticProcess):
         put = (K * np.exp(-r * T) * si.norm.cdf(-self.d2(S0, K, T, r, sigma), 0.0, 1.0) - S0 * si.norm.cdf(-self.d1(S0, K, T, r, sigma), 0.0, 1.0))
         return float(put)
 
-class breedenLitzenberger(Options):
+class Breeden_Litzenberger_Euro(Options):
 
     def __init__(self,S, K, T, r, sigma):
         self.S = S
@@ -293,7 +332,34 @@ class breedenLitzenberger(Options):
             pdf.append(p)
         return pdf, K
 
-    # asian options equivilant
+    def build_strike_table_euro(self, dict, expirylst):
+        table = {}
+        for row in dict:
+            delta = int(row[:2]) / 100
+            type = row[-1]
+            one = self.strike_transform_euro(type, dict[row][0] / 100, 1 / 365, delta)
+            two = self.strike_transform_euro(type, dict[row][1] / 100, 7/365, delta)
+            three = self.strike_transform_euro(type, dict[row][2] / 100, 14 / 365, delta)
+            four = self.strike_transform_euro(type, dict[row][3] / 100, 21 / 365, delta)
+            five = self.strike_transform_euro(type, dict[row][4] / 100, 1/12, delta)
+            six = self.strike_transform_euro(type, dict[row][5] / 100, 2/12, delta)
+            seven = self.strike_transform_euro(type, dict[row][6] / 100, 3/12, delta)
+            eight = self.strike_transform_euro(type, dict[row][7] / 100, 4/12, delta)
+            nine = self.strike_transform_euro(type, dict[row][8] / 100, 5/12, delta)
+            ten = self.strike_transform_euro(type, dict[row][9] / 100, 6/12, delta)
+            table[row] = [one, two, three, four, five, six, seven, eight, nine, ten]
+        strike_table = pd.DataFrame.from_dict(table, orient='index',columns=expirylst)
+        return strike_table
+
+class Breeden_Litzenberger_Asian(Options):
+
+    def __init__(self, S, K, T, r, sigma):
+            self.S = S
+            self.K = K
+            self.T = T
+            self.r = r
+            self.sigma = sigma
+
     def strike_transform_asian(self,type, sigma, expiry, delta):
         transform = si.norm.ppf(delta)
         if type == 'P':
@@ -319,10 +385,28 @@ class breedenLitzenberger(Options):
         K = np.linspace(60, 150, 100)
         pdf = []
         for i, k in enumerate(K):
-            p = np.exp(r*T) * self.gamma_transform_euro(S, k, T, r, sigma,h)
+            p = np.exp(r*T) * self.gamma_transform_asian(S, k, T, r, sigma,h)
             pdf.append(p)
         return pdf, K
 
+    def build_strike_table_asian(self, dict, expirylst):
+        table = {}
+        for row in dict:
+            delta = int(row[:2]) / 100
+            type = row[-1]
+            one = self.strike_transform_asian(type, dict[row][0] / 100, 1 / 365, delta)
+            two = self.strike_transform_asian(type, dict[row][1] / 100, 7/365, delta)
+            three = self.strike_transform_asian(type, dict[row][2] / 100, 14 / 365, delta)
+            four = self.strike_transform_asian(type, dict[row][3] / 100, 21 / 365, delta)
+            five = self.strike_transform_asian(type, dict[row][4] / 100, 1/12, delta)
+            six = self.strike_transform_asian(type, dict[row][5] / 100, 2/12, delta)
+            seven = self.strike_transform_asian(type, dict[row][6] / 100, 3/12, delta)
+            eight = self.strike_transform_asian(type, dict[row][7] / 100, 4/12, delta)
+            nine = self.strike_transform_asian(type, dict[row][8] / 100, 5/12, delta)
+            ten = self.strike_transform_asian(type, dict[row][9] / 100, 6/12, delta)
+            table[row] = [one, two, three, four, five, six, seven, eight, nine, ten]
+        strike_table = pd.DataFrame.from_dict(table, orient='index',columns=expirylst)
+        return strike_table
 
 class Density_Comparison(Options):
 
@@ -332,6 +416,11 @@ class Density_Comparison(Options):
     def __repr__(self):
 
         return f'nothing'
+
+    def convert_strike_grid(self):
+
+
+        return
 
 
 class Back_Test(Density_Comparison):
@@ -358,11 +447,16 @@ class Back_Test(Density_Comparison):
 
 if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    Tenorlst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',
+                                                   '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y',
+                                                   '25Y', '30Y']
+    expirylst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M',]
+
     AO = Options(-0.1, 0.1, 0.25, 0.031)
-    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
+    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 1000)
     print(f'Asain call {A_call}')
 
-    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
+    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 1000)
     print(f'Asain put {A_put}\n')
 
     s_p = StochasticProcess(-0.1, 0.1, 0.2, 0.031)
@@ -391,14 +485,11 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
 
     # Volatility table-------------------------------------------------
     # pull in USDTRY vol grid
-    USDTRY_grid = pd.read_csv('USDTRY_04282022_grid.csv')
-    USDTRY_grid = USDTRY_grid.set_index('ExpiryStrike')
-    #print(USDTRY_grid)
-    USDTRY_dict = USDTRY_grid.T.to_dict('list')
-    USDTRYdf = pd.DataFrame.from_dict(USDTRY_dict, orient='index', columns=['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M', '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y', '25Y', '30Y'])
-    print(f'the dictionary is: \n{USDTRY_dict}')
-    print(f'the df from dict is: \n{USDTRYdf}')
-
+    USDTRY_grid = pd.read_csv('USDBRL_04282022_grid.csv')
+    base = Base(1)
+    dict, df = base.delta_options_grid(USDTRY_grid,'ExpiryStrike', Tenorlst)
+    print(f'\n the dictionary from base: \n{dict}')
+    print(f'\n the df from dict from base is: \n{df}')
 
     S = 100
     K = 100
@@ -407,173 +498,48 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     sigma = 0
 
     # part (a)
-    BL = breedenLitzenberger(S, K, T, r, sigma)
-
-    table1 = {}
-    for row in USDTRY_dict:
-        delta = int(row[:2]) / 100
-        type = row[-1]
-        oneD1 = BL.strike_transform_euro(type, USDTRY_dict[row][0] / 100, 1 / 365, delta)
-        oneW1 = BL.strike_transform_euro(type, USDTRY_dict[row][1] / 100, 7 / 365, delta)
-        twoW1 = BL.strike_transform_euro(type, USDTRY_dict[row][2] / 100, 14 / 365, delta)
-        threeW1 = BL.strike_transform_euro(type, USDTRY_dict[row][3] / 100, 21 / 365, delta)
-        oneM1 = BL.strike_transform_euro(type, USDTRY_dict[row][4] / 100, 1 / 12, delta)
-        twoM1 = BL.strike_transform_euro(type, USDTRY_dict[row][5] / 100, 2 / 12, delta)
-        threeM1 = BL.strike_transform_euro(type, USDTRY_dict[row][6] / 100, 3 / 12, delta)
-        fourM1 = BL.strike_transform_euro(type, USDTRY_dict[row][7] / 100, 4 / 12, delta)
-        fiveM1 = BL.strike_transform_euro(type, USDTRY_dict[row][8] / 100, 5 / 12, delta)
-        sixM1 = BL.strike_transform_euro(type, USDTRY_dict[row][9] / 100, 6 / 12, delta)
-        nineM1 = BL.strike_transform_euro(type, USDTRY_dict[row][10] / 100, 9 / 12, delta)
-        oneY1 = BL.strike_transform_euro(type, USDTRY_dict[row][11] / 100, 1, delta)
-        eiteenM1 = BL.strike_transform_euro(type, USDTRY_dict[row][12] / 100, 18 / 12, delta)
-        twoY1 = BL.strike_transform_euro(type, USDTRY_dict[row][13] / 100, 2, delta)
-        threeY1 = BL.strike_transform_euro(type, USDTRY_dict[row][14] / 100, 3, delta)
-        fourY1 = BL.strike_transform_euro(type, USDTRY_dict[row][15] / 100, 4, delta)
-        fiveY1 = BL.strike_transform_euro(type, USDTRY_dict[row][16] / 100, 5, delta)
-        sixY1 = BL.strike_transform_euro(type, USDTRY_dict[row][17] / 100, 6, delta)
-        sevenY1 = BL.strike_transform_euro(type, USDTRY_dict[row][18] / 100, 7, delta)
-        tenY1 = BL.strike_transform_euro(type, USDTRY_dict[row][19] / 100, 10, delta)
-        fifteenY1 = BL.strike_transform_euro(type, USDTRY_dict[row][20] / 100, 15, delta)
-        twentyY1 = BL.strike_transform_euro(type, USDTRY_dict[row][21] / 100, 20, delta)
-        twent5Y1 = BL.strike_transform_euro(type, USDTRY_dict[row][22] / 100, 25, delta)
-        thirtyY1 = BL.strike_transform_euro(type, USDTRY_dict[row][23] / 100, 30, delta)
-        table1[row] = [oneD1, oneW1, twoW1, threeW1, oneM1, twoM1, threeM1, fourM1, fiveM1, sixM1, nineM1, oneY1, eiteenM1, twoY1,
-                      threeM1, fourY1, fiveY1, sixY1, sevenY1, tenY1, fifteenY1, twentyY1, twent5Y1, thirtyY1]
-    strikeTable1 = pd.DataFrame.from_dict(table1, orient='index',
-                                         columns=['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',
-                                                  '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y',
-                                                  '25Y', '30Y'])
-    print(f'This is the transformed strike tabel: \n {strikeTable1}')
+    BL = Breeden_Litzenberger_Euro(S, K, T, r, sigma)
+    euro_ST = BL.build_strike_table_euro(dict, expirylst)
+    print(f'The Asian transformed strike tabel: \n {euro_ST}')
 
     # part (b)
-    strikeList1 = np.linspace(60, 150, 100)
-    interp1M1 = np.polyfit(strikeTable1['1Y'], USDTRYdf['1Y'] / 100, 2)
-    interp3M1 = np.polyfit(strikeTable1['6M'], USDTRYdf['6M'] / 100, 2)
-    oneMvol1 = np.poly1d(interp1M1)(strikeList1)
-    threeMvol1 = np.poly1d(interp3M1)(strikeList1)
-    plt.plot(strikeList1, oneMvol1, color='r', label='1M vol')
-    plt.plot(strikeList1, threeMvol1, color='b', label='3M vol')
-    plt.xlabel('Strike Range')
-    plt.ylabel('Volatilities')
-    plt.title('Strike Against Volatility')
-    plt.legend()
-    plt.grid(linestyle='--', linewidth=0.75)
-    plt.show()
+    strikeList = np.linspace(75, 150, 100)
+    interp1M_euro = np.polyfit(euro_ST['3M'], df['3M'] / 100, 2)
+    interp3M_euro = np.polyfit(euro_ST['1W'], df['1W'] / 100, 2)
+    oneMvol1 = np.poly1d(interp1M_euro)(strikeList)
+    threeMvol1 = np.poly1d(interp3M_euro)(strikeList)
 
     # part (c)
-    pdf1 = BL.risk_neutral_euro(S, strikeList1, 5 / 12, r, oneMvol1, 0.1)
-    pdf2 = BL.risk_neutral_euro(S, strikeList1, 0.5, r, threeMvol1, 0.1)
-    plt.plot(strikeList1, pdf1, label='1M volatility', linewidth=2, color='r')
-    plt.plot(strikeList1, pdf2, label='3M volatility', linewidth=2, color='b')
-    plt.xlabel('Strike Range')
-    plt.ylabel('Density')
-    plt.title('Risk-Neutral Densities')
-    plt.legend()
-    plt.grid(linestyle='--', linewidth=0.75)
-    plt.show()
+    pdf1_euro = BL.risk_neutral_euro(S, strikeList, 3/12, r, oneMvol1, 0.1)
+    pdf2_euro = BL.risk_neutral_euro(S, strikeList, 1/12, r, threeMvol1, 0.1)
 
     # part (d)
-    cpdf11 = BL.constant_volatiltiy_euro(S, 5 / 12, r, 0.1, 0.1)
-    cpdf21 = BL.constant_volatiltiy_euro(S, 0.5, r, 0.1, 0.1)
-    plt.plot(cpdf11[1], cpdf11[0], label='1M volatility', linewidth=2, color='r')
-    plt.plot(cpdf21[1], cpdf21[0], label='3M volatility', linewidth=2, color='b')
-    plt.xlabel('Strike Range')
-    plt.ylabel('Density')
-    plt.title('Risk-Neutral Densities(const. vol)')
-    plt.legend()
-    plt.grid(linestyle='--', linewidth=0.75)
-    plt.show()
+    cpdf1_euro = BL.constant_volatiltiy_euro(S, 3/12, r, 0.1, 0.1)
+    cpdf2_euro = BL.constant_volatiltiy_euro(S, 1/12, r, 0.1, 0.1)
 
-    # part (e)
-    S = np.linspace(60, 150, len(pdf1))
-    p1 = BL.digital_price(pdf1, S, K=K, type='P')
-    p2 = BL.digital_price(pdf2, S, K=K, type='C')
-    v = (threeMvol1 + oneMvol1) / 2
-    eupdf = BL.risk_neutral_euro(100, strikeList1, 2 / 12, r, v, 0.1)
-    p3 = BL.euroPayoff(eupdf, S, K)
-    print()
-    print(f'1M European Digital Put Option with Strike {K}:   {p1}')
-    print(f'3M European Digital Call Option with Strike {K}:  {p2}')
-    print(f'2M European Call Option with Strike 100:          {p3}\n')
-
-
-    """
     # asian option transform
-    table = {}
-    for row in USDTRY_dict:
-        delta = int(row[:2]) / 100
-        type = row[-1]
-        oneD = BL.strike_transform_asian(type, USDTRY_dict[row][0] / 100, 1 / 365, delta)
-        oneW = BL.strike_transform_asian(type, USDTRY_dict[row][1] / 100, 7 / 365, delta)
-        twoW = BL.strike_transform_asian(type, USDTRY_dict[row][2] / 100, 14 / 365, delta)
-        threeW = BL.strike_transform_asian(type, USDTRY_dict[row][3] / 100, 21 / 365, delta)
-        oneM = BL.strike_transform_asian(type, USDTRY_dict[row][4] / 100, 1 / 12, delta)
-        twoM = BL.strike_transform_asian(type, USDTRY_dict[row][5] / 100, 2 / 12, delta)
-        threeM = BL.strike_transform_asian(type, USDTRY_dict[row][6] / 100, 3 / 12, delta)
-        fourM = BL.strike_transform_asian(type, USDTRY_dict[row][7] / 100, 4 / 12, delta)
-        fiveM = BL.strike_transform_asian(type, USDTRY_dict[row][8] / 100, 5 / 12, delta)
-        sixM = BL.strike_transform_asian(type, USDTRY_dict[row][9] / 100, 6 / 12, delta)
-        nineM = BL.strike_transform_asian(type, USDTRY_dict[row][10] / 100, 9 / 12, delta)
-        oneY = BL.strike_transform_asian(type, USDTRY_dict[row][11] / 100, 1, delta)
-        eiteenM = BL.strike_transform_asian(type, USDTRY_dict[row][12] / 100, 18 / 12, delta)
-        twoY = BL.strike_transform_asian(type, USDTRY_dict[row][13] / 100, 2, delta)
-        threeY = BL.strike_transform_asian(type, USDTRY_dict[row][14] / 100, 3, delta)
-        fourY = BL.strike_transform_asian(type, USDTRY_dict[row][15] / 100, 4, delta)
-        fiveY = BL.strike_transform_asian(type, USDTRY_dict[row][16] / 100, 5, delta)
-        sixY = BL.strike_transform_asian(type, USDTRY_dict[row][17] / 100, 6, delta)
-        sevenY = BL.strike_transform_asian(type, USDTRY_dict[row][18] / 100, 7, delta)
-        tenY = BL.strike_transform_asian(type, USDTRY_dict[row][19] / 100, 10, delta)
-        fifteenY = BL.strike_transform_asian(type, USDTRY_dict[row][20] / 100, 15, delta)
-        twentyY = BL.strike_transform_asian(type, USDTRY_dict[row][21] / 100, 20, delta)
-        twent5Y = BL.strike_transform_asian(type, USDTRY_dict[row][22] / 100, 25, delta)
-        thirtyY = BL.strike_transform_asian(type, USDTRY_dict[row][23] / 100, 30, delta)
-        table[row] = [oneD, oneW, twoW, threeW, oneM, twoM, threeM, fourM, fiveM, sixM, nineM, oneY, eiteenM, twoY,
-                      threeM, fourY, fiveY, sixY, sevenY, tenY, fifteenY, twentyY, twent5Y, thirtyY]
-    strikeTable = pd.DataFrame.from_dict(table, orient='index',
-                                         columns=['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',
-                                                  '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y',
-                                                  '25Y', '30Y'])
-    print(f'This is the transformed strike tabel: \n {strikeTable}')
+    BL_asain = Breeden_Litzenberger_Asian(S, K, T, r, sigma)
+    asain_ST = BL_asain.build_strike_table_asian(dict, expirylst)
+    print(f'The Asian transformed strike tabel: \n {asain_ST}')
 
     # part (b)
-    strikeList = np.linspace(60, 150, 100)
-    interp1M = np.polyfit(strikeTable['1Y'], USDTRYdf['1Y'] / 100, 2)
-    interp3M = np.polyfit(strikeTable['6M'], USDTRYdf['6M'] / 100, 2)
-    oneMvol = np.poly1d(interp1M)(strikeList)
-    threeMvol = np.poly1d(interp3M)(strikeList)
-    plt.plot(strikeList, oneMvol, color='r', label='1M vol')
-    plt.plot(strikeList, threeMvol, color='b', label='3M vol')
-    plt.xlabel('Strike Range')
-    plt.ylabel('Volatilities')
-    plt.title('Strike Against Volatility')
-    plt.legend()
-    plt.grid(linestyle='--', linewidth=0.75)
-    plt.show()
+    st_asian = np.linspace(75, 150, 100)
+    asian_3m = np.polyfit(asain_ST['3M'], df['3M'] / 100, 2)
+    asian_6m = np.polyfit(asain_ST['1W'], df['1W'] / 100, 2)
+    a3M_vol = np.poly1d(asian_3m)(st_asian)
+    a6M_vol = np.poly1d(asian_6m)(st_asian)
+    base.print_strike_check(a3M_vol, 'asian', a6M_vol, 'asian', st_asian, '1W')
 
     # part (c)
-    pdf1 = BL.risk_neutral_asian(S, strikeList, 1, r, oneMvol, 0.1)
-    pdf2 = BL.risk_neutral_asian(S, strikeList, 0.5, r, threeMvol, 0.1)
-    plt.plot(strikeList, pdf1, label='1M volatility', linewidth=2, color='r')
-    plt.plot(strikeList, pdf2, label='3M volatility', linewidth=2, color='b')
-    plt.xlabel('Strike Range')
-    plt.ylabel('Density')
-    plt.title('Risk-Neutral Densities')
-    plt.legend()
-    plt.grid(linestyle='--', linewidth=0.75)
-    plt.show()
+    pdf1_asian = BL_asain.risk_neutral_asian(S, st_asian, 3/12, r, a3M_vol, 0.1)
+    pdf2_asian = BL_asain.risk_neutral_asian(S, st_asian, 1/12, r, a6M_vol, 0.1)
+    base.print_risk_neutral_density(pdf2_asian, 'asian', pdf2_euro, 'euro', st_asian, '1W')
 
     # part (d)
-    cpdf1 = BL.constant_volatiltiy_asian(S, 1, r, 0.1, 0.1)
-    cpdf2 = BL.constant_volatiltiy_asian(S, 0.5, r, 0.1, 0.1)
-    plt.plot(cpdf1[1], cpdf1[0], label='1M volatility', linewidth=2, color='r')
-    plt.plot(cpdf2[1], cpdf2[0], label='3M volatility', linewidth=2, color='b')
-    plt.xlabel('Strike Range')
-    plt.ylabel('Density')
-    plt.title('Risk-Neutral Densities(const. vol)')
-    plt.legend()
-    plt.grid(linestyle='--', linewidth=0.75)
-    plt.show()
-    """
+    cpdf1_asian = BL_asain.constant_volatiltiy_asian(S, 3/12, r, 0.1, 0.1)
+    cpdf2_asian = BL_asain.constant_volatiltiy_asian(S, 1/12, r, 0.1, 0.1)
+    base.print_risk_neutral_const(cpdf2_asian, 'asian', cpdf2_euro, 'euro', '1W')
+
 
 
 

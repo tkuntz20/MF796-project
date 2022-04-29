@@ -1,165 +1,241 @@
-import math
-import numpy as np
+""""
+Group term-project for MF 796 Computational Methods
+@Authers: Kibae Kim, Tiaga Schwarz, Karen Mu, Thomas Kuntz
+"""
+
 import pandas as pd
-import cmath
+import numpy as np
+import math
+import QuantLib as ql
+import scipy as sp
 import scipy.stats as si
+import statsmodels.api as sm
+import seaborn as sns
+import sympy as sy
+from scipy.optimize import newton
+from tabulate import tabulate
+from pandas_datareader import data
 import matplotlib.pyplot as plt
-import time
-from scipy.optimize import root, minimize
-from scipy import interpolate
-import warnings
-warnings.filterwarnings("ignore")
+from datetime import datetime
+import calendar
 
 
-class base:
+class Base:
 
-    def __init__(self, S, K, T, r, sigma):
-        self.S = S
-        self.K = K
-        self.T = T
-        self.r = r
-        self.sigma = sigma
+    def __init__(self, one):
+        self.one = one
 
     def __repr__(self):
-        return f'Base Class initial price level is: {self.S}, strike is: {self.K}, expiry is: {self.T}, interest rate is: {self.r}, volatility is: {self.sigma}.'
 
-    def d1(self,S, K, T, r, sigma):
-        return (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+        return f'nothing'
 
-    def d2(self,S, K, T, r, sigma):
-        return (np.log(S / K) + (r - 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
 
-    def euroCall(self, S, K, T, r, sigma):
-        call = (S * si.norm.cdf(self.d1(S, K, T, r, sigma), 0.0, 1.0) - K * np.exp(-r * T) * si.norm.cdf(self.d2(S, K, T, r, sigma), 0.0, 1.0))
+class StochasticProcess(Base):
+
+    def __init__(self, theta, kappa, sigma, r):
+        self.theta = theta
+        self.kappa = kappa
+        self.sigma = sigma
+        self.r = r
+
+    def __repr__(self):
+
+        return f'nothing'
+
+    def VG_char_tcBM(self, S0, T, N):                                                       # time changed Varaince Gamma characteristic function
+        # w is the weight similar to the w in Heston
+        w = - np.log(1 - self.theta * self.kappa - self.kappa/2 * self.sigma**2) / self.kappa
+        rho = 1/ self.kappa
+        gv = si.gamma(rho * T).rvs(N) / rho
+        nv = si.norm.rvs(0,1,N)
+        vGamma = self.theta * gv + self.sigma * np.sqrt(gv) * nv
+        sT = S0 * np.exp((self.r - w) * T + vGamma)
+        return sT.reshape((N,1))
+
+    def monteCarloVG_tc(self, T, N, M):                                                                                  # time changed Brownian motion VG process
+        dt = T / (N - 1)
+        X0 = np.zeros((M,1))
+        gv = si.gamma(dt / self.kappa, scale=self.kappa).rvs(size=(M, N-1))
+        nv = si.norm.rvs(loc=0, scale=1, size=(M, N-1))
+        steps = self.r * dt + self.theta * gv + self.sigma * np.sqrt(gv) * nv
+        X = np.concatenate((X0, steps), axis=1).cumsum(1)
+        return X
+
+    def monteCarloVG_dg(self, T, N, M):                                                                                 # Monte Carlo simulation via difference of gammas
+        dt = T / (N - 1)
+        X0 = np.zeros((M, 1))
+        mu_p = 0.5 * np.sqrt(self.theta ** 2 + (2 * self.sigma ** 2) / self.kappa) + self.theta / 2
+        mu_q = 0.5 * np.sqrt(self.theta ** 2 + (2 * self.sigma ** 2) / self.kappa) - self.theta / 2
+        gvPlus = si.gamma(dt / self.kappa, scale=self.kappa*mu_q).rvs(size=(M, N-1))
+        gvMinus = si.gamma(dt / self.kappa, scale=self.kappa*mu_p).rvs(size=(M, N-1))
+        steps = (gvPlus - gvMinus)
+        X = np.concatenate((X0, steps), axis=1).cumsum(1)
+        return X
+
+class Options(StochasticProcess):
+
+    def __init__(self, theta, kappa, sigma, r):
+        self.theta = theta   # drift of the brownian motion
+        self.kappa = kappa   # standard deviation of the BM
+        self.sigma = sigma   # variance of the BM
+        self.r = r
+
+    def __repr__(self):
+
+        return f'nothing'
+
+    def vanilla_Asain_Call_fixed(self, S0, K, T, r, sigma, N, M):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        dt = T / N
+        for j in range(M):
+            S[0] = S0
+            for i in range(N):
+                epsilon = sp.random.randn(1)
+                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+            S_avg = np.average(S)
+            sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
+        premium = (sumpayoff / M)
+        print(f'average is:  {S_avg},  sum of S_path/N+1:  {np.sum(S)/(N+1)}\n')
+        return premium
+
+    def vanilla_Asain_Put_fixed(self, S0, K, T, r, sigma, N, M):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        dt = T / N
+        for j in range(M):
+            S[0] = S0
+            for i in range(N):
+                epsilon = sp.random.randn(1)
+                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+            S_avg = np.average(S)
+            sumpayoff += max(0, K - S_avg) * np.exp(-r * T)
+        premium = (sumpayoff / M)
+        return premium
+
+    def vanilla_Asain_Put_float(self, S0, K, T, r, sigma, N, M, k):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        dt = T / N
+        for j in range(M):
+            S[0] = S0
+            for i in range(N):
+                epsilon = sp.random.randn(1)
+                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+            S_avg = np.average(S)
+            sumpayoff += max(0, (k * S_avg) - S[-1]) * np.exp(-r * T)
+        premium = (sumpayoff / M)
+        return premium
+
+    def vanilla_Asain_Call_float(self, S0, K, T, r, sigma, N, M, k):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        dt = T / N
+        for j in range(M):
+            S[0] = S0
+            for i in range(N):
+                epsilon = sp.random.randn(1)
+                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+            S_avg = np.average(S)
+            sumpayoff += max(0, S[-1] - (k * S_avg)) * np.exp(-r * T)
+        premium = (sumpayoff / M)
+        return premium
+
+    def geometric_Asain_Call(self, S0, K, T, r, sigma):
+        sigmaG = sigma / np.sqrt(3)
+        b = 0.5 * (r - 0.5 * (sigmaG ** 2))
+        d1 = (np.log(S0 / K) + (b + 0.5 * (sigmaG ** 2)) * T) / (sigmaG * np.sqrt(T))
+        d2 = d1 - (sigmaG * np.sqrt(T))
+        call = (S0 * np.exp((b - r) * T) * si.norm.cdf(d1)) - K * np.exp(-r * T) * si.norm.cdf(d2)
+        return call
+
+    def geometric_Asain_Put(self, S0, K, T, r, sigma):
+        sigmaG = sigma / np.sqrt(3)
+        b = 0.5 * (r - 0.5 * (sigmaG ** 2))
+        d1 = (np.log(S0 / K) + (b + 0.5 * (sigmaG ** 2)) * T) / (sigmaG * np.sqrt(T))
+        d2 = d1 - (sigmaG * np.sqrt(T))
+        put = K * np.exp(-r * T) * si.norm.cdf(-d2) - (S0 * np.exp((b - r) * T) * si.norm.cdf(-d1))
+        return put
+
+    def bnp_paribas_Asain_call(self, S0, K, T, r, sigma, N, M, b):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        dt = T / N
+        for j in range(M):
+            S[0] = S0
+            indicator = 0.0
+            for i in range(N):
+                # indicator should act like a digital option
+                if S[i] < b:
+                    epsilon = sp.random.randn(1)
+                    S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+                    indicator += 1
+                else:
+                    S[i + 1] = S[i] * 0
+                    indicator += 0
+            # S_avg = np.average(S)
+            S_avg = np.sum(S)
+            # print(f'average:  {S_avg}')
+            # print(f'indicator:  {indicator}')
+            sumpayoff += max(0, (S_avg / indicator) - K) * np.exp(-r * T)
+        premium = (sumpayoff / M)
+
+        return premium
+
+    def bnp_paribas_Asain_put(self, S0, K, T, r, sigma, N, M, b):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        dt = T / N
+        for j in range(M):
+            S[0] = S0
+            indicator = 0.0
+            for i in range(N):
+                # indicator should act like a digital option
+                if S[i] > b:
+                    epsilon = sp.random.randn(1)
+                    S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+                    indicator += 1
+                else:
+                    S[i + 1] = S[i] * 0
+                    indicator += 0
+            #S_avg = np.average(S)
+            S_avg = np.sum(S)
+            #print(f'average:  {S_avg}')
+            #print(f'indicator:  {indicator}')
+            sumpayoff += max(0, K - (S_avg / indicator)) * np.exp(-r * T)
+        premium = (sumpayoff / M)
+
+        return premium
+
+    def digital_call(self, S0, K, T, r, sigma, N, M):
+        d2 = (np.log(S0/K) + (r - sigma ** 2 / 2) * T) / (sigma * np.sqrt(T))
+        return np.exp(-r * T) * si.norm.cdf(d2)
+
+    def digital_put(self, S0, K, T, r, sigma, N, M):
+        d2 = (np.log(S0/K) + (r - sigma ** 2 / 2) * T) / (sigma * np.sqrt(T))
+        return np.exp(-r * T) * si.norm.cdf(-d2)
+
+    def d1(self, S0, K, T, r, sigma):
+        return (np.log(S0 / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+
+    def d2(self, S0, K, T, r, sigma):
+        return (np.log(S0 / K) + (r - 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+
+    def euro_call(self, S0, K, T, r, sigma):
+        call = (S0 * si.norm.cdf(self.d1(S0, K, T, r, sigma), 0.0, 1.0) - K * np.exp(-r * T) * si.norm.cdf(self.d2(S0, K, T, r, sigma), 0.0, 1.0))
         return float(call)
 
-    def euroPut(self, S, K, T, r, sigma):
-        put = (K * np.exp(-r * T) * si.norm.cdf(-self.d2(S, K, T, r, sigma), 0.0, 1.0) - S * si.norm.cdf(-self.d1(S, K, T, r, sigma), 0.0, 1.0))
+    def euro_put(self, S0, K, T, r, sigma):
+        put = (K * np.exp(-r * T) * si.norm.cdf(-self.d2(S0, K, T, r, sigma), 0.0, 1.0) - S0 * si.norm.cdf(-self.d1(S0, K, T, r, sigma), 0.0, 1.0))
         return float(put)
 
-    def discountFactor(self,f,t):
-        return 1/(1 + f)**t
-
-class euroGreeks(base):
-
-    def __init__(self, S, K, T, r, sigma):
-        self.S = S
-        self.K = K
-        self.T = T
-        self.r = r
-        self.sigma = sigma
-
-    def delta(self):
-        d1 = (np.log(self.S / self.K) + (self.r + 0.5 * self.sigma ** 2) * self.T) / (self.sigma * np.sqrt(self.T))
-        deltaCall = si.norm.cdf(self.d1(self.S, self.K, self.T, self.r, self.sigma), 0.0, 1.0)
-        deltaPut = si.norm.cdf(-self.d1(self.S, self.K, self.T, self.r, self.sigma), 0.0, 1.0)
-        return deltaCall, -deltaPut
-
-    def gamma(self):
-        return (1 / np.sqrt(2 * np.pi) * np.exp(-self.d1(self.S, self.K, self.T, self.r, self.sigma) ** 2 * 0.5)) / (self.S * self.sigma * np.sqrt(self.T))
-
-    def vega(self):
-        return self.S * (1 / np.sqrt(2 * np.pi) * np.exp(-self.d1(self.S, self.K, self.T, self.r, self.sigma) ** 2 * 0.5)) * np.sqrt(self.T)
-
-    def theta(self):
-        density = 1 / np.sqrt(2 * np.pi) * np.exp(-self.d1(self.S, self.K, self.T, self.r, self.sigma) ** 2 * 0.5)
-        cTheta = (-self.sigma * self.S * density) / (2 * np.sqrt(self.T)) - self.r * self.K * np.exp(-self.r * self.T) * si.norm.cdf(self.d2(self.S, self.K, self.T, self.r, self.sigma), 0.0, 1.0)
-        pTheta = (-self.sigma * self.S * density) / (2 * np.sqrt(self.T)) + self.r * self.K * np.exp(-self.r * self.T) * si.norm.cdf(-self.d2(self.S, self.K, self.T, self.r, self.sigma), 0.0, 1.0)
-        return cTheta, pTheta
-
-class FastFourierTransforms(euroGreeks):
-
-    def __init__(self, T, lst, S=267.15, r=0.0015, q=0.0177):
-        self.S = S
-        self.T = T
-        self.r = r
-        self.q = q  # dividend (in this case q=0)
-        self.kappa = lst[0]
-        self.theta = lst[1]
-        self.sigma = lst[2]
-        self.rho = lst[3]
-        self.nu = lst[4]
-
-    def __repr__(self):
-        return f'FFT Class initial price level is: {self.S}, expiry is: {self.T}, interest rate is: ' \
-               f'{self.r},\n dividend is: {self.q}, volatility is: {self.sigma}, nu is: {self.nu}, kappa is: {self.kappa}, rho is: {self.rho}, theta is: {self.theta}'
-
-    def helper(self, n):
-
-        delta = np.zeros(len(n), dtype=complex)
-        delta[n == 0] = 1
-        return delta
-
-    def CharaceristicHeston(self, u):
-
-        sigma = self.sigma
-        nu = self.nu
-        kappa = self.kappa
-        rho = self.rho
-        theta = self.theta
-        S = self.S
-        r = self.r
-        T = self.T
-        q = self.q
-
-        i = complex(0, 1)
-        Lambda = cmath.sqrt(sigma ** 2 * (u ** 2 + i * u) + (kappa - i * rho * sigma * u) ** 2)
-        omega = np.exp(i * u * np.log(S) + i * u * (r - q) * T + kappa * theta * T * (kappa - i * rho * sigma * u) / sigma ** 2) / ((cmath.cosh(Lambda * T / 2) + (kappa - i * rho * sigma * u) / Lambda * cmath.sinh(Lambda * T / 2)) ** (2 * kappa * theta / sigma ** 2))
-        phi = omega * np.exp(-(u ** 2 + i * u) * nu / (Lambda / cmath.tanh(Lambda * T / 2) + kappa - i * rho * sigma * u))
-        return phi
-
-    def heston(self, alpha, K, Klst, N, B):
-
-        t = time.time()
-        tau = B / (2 ** N)
-        Lambda = (2 * math.pi / (2 ** N)) / tau
-        dx = (np.arange(1, (2 ** N) + 1, dtype=complex) - 1) * tau
-        chi = np.log(self.S) - Lambda * (2 ** N) / 2
-        dy = chi + (np.arange(1, (2 ** N) + 1, dtype=complex) - 1) * Lambda
-        i = complex(0, 1)
-        chiDx = np.zeros(len(np.arange(1, (2 ** N) + 1, dtype=complex)), dtype=complex)
-        for ff in range(0, (2 ** N)):
-            u = dx[ff] - (alpha + 1) * i
-            chiDx[ff] = self.CharaceristicHeston(u) / ((alpha + dx[ff] * i) * (alpha + 1 + dx[ff] * i))
-        FFT = (tau / 2) * chiDx * np.exp(-i * chi * dx) * (
-                    2 - self.helper(np.arange(1, (2 ** N) + 1, dtype=complex) - 1))
-        ff = np.fft.fft(FFT)
-        mu = np.exp(-alpha * np.array(dy)) / np.pi
-        ffTwo = mu * np.array(ff).real
-        List = list(chi + (np.cumsum(np.ones(((2 ** N), 1))) - 1) * Lambda)
-        Kt = np.exp(np.array(List))
-        Kfft = []
-        ffT = []
-        for gg in range(len(Kt)):
-            if (Kt[gg] > 1e-16) & (Kt[gg] < 1e16) & (Kt[gg] != float("inf")) & (Kt[gg] != float("-inf")) & (
-                    ffTwo[gg] != float("inf")) & (ffTwo[gg] != float("-inf")) & (ffTwo[gg] is not float("nan")):
-                Kfft += [Kt[gg]]
-                ffT += [ffTwo[gg]]
-        spline = interpolate.splrep(Kfft, np.real(ffT))
-        if Klst is not None:
-            value = np.exp(-self.r * self.T) * interpolate.splev(Klst, spline).real
-        else:
-            value = np.exp(-self.r * self.T) * interpolate.splev(K, spline).real
-
-        tt = time.time()
-        compTime = tt - t
-
-        return value
-
-    def strikeCalibration(self, size, strikesLst, K):
-        x = np.zeros((len(size), len(strikesLst)))
-        y = np.zeros((len(size), len(strikesLst)))
-        a, b = np.meshgrid(size, strikesLst)
-
-        for gg in range(len(size)):
-            for pp in range(len(strikesLst)):
-                Heston = self.heston(1, size[gg], strikesLst[pp], K)
-                x[gg][pp] = Heston[0]
-                y[gg][pp] = 1 / ((Heston[0]) ** 2 * Heston[1])
-
-        return x, y, a, b
-
-class breedenLitzenberger(FastFourierTransforms):
+class breedenLitzenberger(Options):
 
     def __init__(self,S, K, T, r, sigma):
         self.S = S
@@ -168,17 +244,17 @@ class breedenLitzenberger(FastFourierTransforms):
         self.r = r
         self.sigma = sigma
 
-    def digitalPayoff(self,S,K,type):
+    def digital_payoff(self,S,K,type):
         if type == 'C':
             p = 1 if S>=K else 0
         else:
             p = 1 if S<=K else 0
         return p
 
-    def digitalPrice(self,density,S,K,type):
+    def digital_price(self,density,S,K,type):
         value = 0
         for i in range(0, len(S)-2):
-            value += density[i] * self.digitalPayoff(S[i], K, type) * 0.1
+            value += density[i] * self.digital_payoff(S[i], K, type) * 0.1
             #print(value)
         return value
 
@@ -188,7 +264,7 @@ class breedenLitzenberger(FastFourierTransforms):
             payoff += density[i] * max(0, S[i] - K) * 0.1
         return payoff
 
-    def strikeTransform(self,type, sigma, expiry, delta):
+    def strike_transform_euro(self,type, sigma, expiry, delta):
         transform = si.norm.ppf(delta)
         if type == 'P':
             K = 100 * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
@@ -196,171 +272,187 @@ class breedenLitzenberger(FastFourierTransforms):
             K = 100 * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
         return K
 
-    def gammaTransform(self,S,K,T,r,sigma,h):
-        value = base.euroCall(self,S, K, T, r, sigma)
-        valuePlus = base.euroCall(self,S,K+h,T,r,sigma)
-        valueDown = base.euroCall(self,S, K-h, T, r, sigma)
+    def gamma_transform_euro(self,S,K,T,r,sigma,h):
+        value = Options.euro_call(self,S, K, T, r, sigma)
+        valuePlus = Options.euro_call(self,S,K+h,T,r,sigma)
+        valueDown = Options.euro_call(self,S, K-h, T, r, sigma)
         return (valueDown - 2 * value + valuePlus) / h**2
 
-    def riskNeutral(self,S,K,T,r,sigma,h):
+    def risk_neutral_euro(self,S,K,T,r,sigma,h):
         pdf = []
         for jj, vol in enumerate(sigma):
-            p = np.exp(r*T) * self.gammaTransform(S, K[jj], T, r, vol,h)
+            p = np.exp(r*T) * self.gamma_transform_euro(S, K[jj], T, r, vol,h)
             pdf.append(p)
         return pdf
 
-    def constantVolatiltiy(self,S,T,r,sigma,h):
-        K = np.linspace(70, 130, 150)
+    def constant_volatiltiy_euro(self,S,T,r,sigma,h):
+        K = np.linspace(60, 150, 100)
         pdf = []
         for i, k in enumerate(K):
-            p = np.exp(r*T) * self.gammaTransform(S, k, T, r, sigma,h)
+            p = np.exp(r*T) * self.gamma_transform_euro(S, k, T, r, sigma,h)
             pdf.append(p)
         return pdf, K
 
-class hestonCalibration(breedenLitzenberger):
+    # asian options equivilant
+    def strike_transform_asian(self,type, sigma, expiry, delta):
+        transform = si.norm.ppf(delta)
+        if type == 'P':
+            K = 100 * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
+        else:
+            K = 100 * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
+        return K
 
-    def __init__(self,excel):
-        self.excel = excel
+    def gamma_transform_asian(self,S,K,T,r,sigma,h):
+        value = Options.geometric_Asain_Call(self, S, K, T, r, sigma)
+        valuePlus = Options.geometric_Asain_Call(self, S, K+h, T, r, sigma)
+        valueDown = Options.geometric_Asain_Call(self, S, K-h, T, r, sigma)
+        return (valueDown - 2 * value + valuePlus) / h**2
+
+    def risk_neutral_asian(self,S,K,T,r,sigma,h):
+        pdf = []
+        for jj, vol in enumerate(sigma):
+            p = np.exp(r*T) * self.gamma_transform_asian(S, K[jj], T, r, vol,h)
+            pdf.append(p)
+        return pdf
+
+    def constant_volatiltiy_asian(self,S,T,r,sigma,h):
+        K = np.linspace(60, 150, 100)
+        pdf = []
+        for i, k in enumerate(K):
+            p = np.exp(r*T) * self.gamma_transform_euro(S, k, T, r, sigma,h)
+            pdf.append(p)
+        return pdf, K
+
+
+class Density_Comparison(Options):
+
+    def __init__(self, one):
+        self.one = one
 
     def __repr__(self):
-        return f'The imported data frame is:\n  {self.excel}'
 
-    def data(self):
-        df = pd.DataFrame(self.excel)
-        df['call_mid'] = (df.call_bid + df.call_ask) / 2
-        df['put_mid'] = (df.put_bid + df.put_ask) / 2
-        callDF = df[['expDays', 'expT', 'K','call_mid', 'call_ask', 'call_bid']]
-        putDF =df[['expDays', 'expT', 'K', 'put_mid', 'put_ask', 'put_bid']]
-        return df, putDF, callDF
+        return f'nothing'
 
-    def arbitrage(self,df,type):
-        mid = df.columns[df.columns.str.contains('mid')][0]
-        if type == 'c':
-            monotonic = any(df[mid].pct_change().dropna() >= 0)
-        else:
-            monotonic = any(df[mid].pct_change().dropna() <= 0)
 
-        df['delta'] = (df[mid] - df[mid].shift(1)) / (df.K - df.K.shift(1))
-        if type == 'c':
-            dc = any(df.delta >= 0) or any(df.delta < -1)
-        else:
-            dc = any(df.delta > 1) or any(df.delta <= 0)
+class Back_Test(Density_Comparison):
 
-        df['convex'] = df[mid] - 2 * df[mid].shift(1) + df[mid].shift(2)
-        convexity = any(df.convex < 0)
+    def __init__(self, one):
+        self.one = one
 
-        # arb checks
-        return pd.Series([monotonic, dc, convexity], index=['Monotonic','Delta','Convexity'])
+    def __repr__(self):
 
-    def helper2(self, K, Klst, alpha, T, lst):
-        FFT = FastFourierTransforms(T, lst)
-        value = FFT.heston(alpha, K, Klst, N=9, B=1000)
-        return value[0]
+        return f'nothing'
 
-    def squareSum(self, data, alpha, lst, weighted=False):
-        #print(data)
-        options = data.columns[3].split('_')[0]
-        opt = 0
-        if not weighted:
-            for T in data.expT.unique():
-                temp = data[data.expT == T]
-                Klst = temp.K.values
-                values = self.helper2(np.mean(Klst), Klst, alpha, T, lst)
-                opt += np.sum((values - temp[options + '_mid'].values)**2)
-        else:
-            for T in data.expT.unique():
-                temp = data[data.expT == T]
-                Klst = temp.K.values
-                v = 1 / (temp[options + '_ask'] - temp[options + '_bid'])
-                v = v.values
-                values = self.helper2(np.mean(Klst), Klst, alpha, T, lst)
-                opt += v.dot((values - temp[options + '_mid'].values)**2)
-        return opt
 
-    def optimizer(self, lst, alpha, calls, puts, weighted=False):
-        callValue = self.squareSum(calls, alpha, lst, weighted)
-        putVlaue = self.squareSum(puts, alpha, lst, weighted)
-        return callValue + putVlaue
 
-    def cb1(self, x):
-        global times
-        if times % 5 == 0:
-            print('{}: {}'.format(times, self.optimizer(x, alpha, calls, puts)))
-            print(x)
-        times += 1
-        return
 
-    def cb2(self, x):
-        global times
-        print('{}: {}'.format(times, self.optimizer(x, alpha, calls, puts, True)))
-        print(x)
-        times += 1
-        return
 
-class hedgingViaHeston(hestonCalibration):
 
-    def __init__(self, K, S, r, T, h, alpha, lst):
-        self.lst = lst
-        self.alpha = alpha
-        self.K = K
-        self.S = S
-        self.r = r
-        self.T = T
-        self.h = h
 
-    def deltaHedge(self):
-        value = FastFourierTransforms(self.T, lst,S=self.S).heston(self.alpha,self.K,None,10,1000)
-        valuePlus = FastFourierTransforms(self.T, lst,S=self.S+self.h).heston(self.alpha,self.K,None,10,1000)
-        valueDown = FastFourierTransforms(self.T, lst,S=self.S-self.h).heston(self.alpha,self.K,None,10,1000)
-        delta = (valuePlus-valueDown)/2/self.h
-        impliedVol = root(lambda x: base.euroCall(self, self.S,self.K,self.T,self.r,x) - value, 0.01).x
-        return delta, impliedVol
 
-    def vegaHedge(self,g):
-        value = FastFourierTransforms(self.T, lst, S=self.S).heston(self.alpha, self.K, None, 10, 1000)
-        lst1 = self.lst + np.array([0, g, 0, 0, g])
-        valuePlus = FastFourierTransforms(self.T, lst1, S=self.S + self.h).heston(self.alpha, self.K, None, 10, 1000)
-        lst2 = self.lst - np.array([0, g, 0, 0, g])
-        valueDown = FastFourierTransforms(self.T, lst2, S=self.S - self.h).heston(self.alpha, self.K, None, 10, 1000)
-        vega = (valuePlus-valueDown)/2/g
-        impliedVol = root(lambda x: base.euroCall(self, self.S, self.K, self.T, self.r, x) - value, 0.01).x
-        return vega, impliedVol
 
-if __name__ == '__main__':
+
+
+
+
+
+if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    AO = Options(-0.1, 0.1, 0.25, 0.031)
+    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
+    print(f'Asain call {A_call}')
+
+    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
+    print(f'Asain put {A_put}\n')
+
+    s_p = StochasticProcess(-0.1, 0.1, 0.2, 0.031)
+    vg = s_p.monteCarloVG_tc(2,504,100)
+    plt.plot(vg.T)
+    plt.show()
+
+    vg2 = s_p.monteCarloVG_dg(1, 253, 10)
+    plt.plot(vg2.T)
+    plt.show()
+
+    avg = np.sum(vg2)/252
+
+    #print(vg2)
+
+    print(f'the geometric call values is:       {AO.geometric_Asain_Call(100, 100, 1, 0, 0.25)}')
+    print(f'the geometric put values is:        {AO.geometric_Asain_Put(100, 100, 1, 0, 0.25)}')
+    #print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 100, 1, 0, 0.25 ,253 ,10000 ,1)}')
+    #print(f'the floating strike put values is:  {AO.vanilla_Asain_Put_float(100, 100, 1, 0, 0.25, 253, 10000, 1)}')
+    #print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(100, 100, 1, 0.0, 0.25 ,252 ,10000, 150)}')
+    #print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(100, 100, 1, 0.0, 0.25, 252, 10000, 50)}\n')
+    #print(f'the digital call values is:         {AO.digital_call(100, 100, 3/12, 0.0, 0.25, 252, 10000)}')
+    #print(f'the digital put values is:          {AO.digital_put(100, 100, 1/12, 0.0, 0.25, 252, 10000)}')
+    #print(f'the euro call values is:            {AO.euro_call(100, 100, 2/12, 0.0, 0.25)}')
+    #print(f'the euro put values is:             {AO.euro_put(100, 100, 2/12, 0.0, 0.25)}')
 
     # Volatility table-------------------------------------------------
-    expiryStrike = ['10DP','25DP','40DP','50DP','40DC','25DC','10DC']
-    vols = [[32.25,28.36],[24.73,21.78],[20.21,18.18],[18.24,16.45],[15.74,14.62],[13.70,12.56],[11.48,10.94]]
-    volDictionary = dict(zip(expiryStrike, vols))
-    volDF = pd.DataFrame.from_dict(volDictionary,orient='index',columns=['1M','3M'])
-    #print(volDictionary)
+    # pull in USDTRY vol grid
+    USDTRY_grid = pd.read_csv('USDTRY_04282022_grid.csv')
+    USDTRY_grid = USDTRY_grid.set_index('ExpiryStrike')
+    #print(USDTRY_grid)
+    USDTRY_dict = USDTRY_grid.T.to_dict('list')
+    USDTRYdf = pd.DataFrame.from_dict(USDTRY_dict, orient='index', columns=['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M', '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y', '25Y', '30Y'])
+    print(f'the dictionary is: \n{USDTRY_dict}')
+    print(f'the df from dict is: \n{USDTRYdf}')
+
+
     S = 100
-    K = 0
+    K = 100
     T = 0
     r = 0.0
     sigma = 0
 
-
     # part (a)
     BL = breedenLitzenberger(S, K, T, r, sigma)
-    table = {}
-    for row in volDictionary:
-        delta = int(row[:2])/100
+    """
+    table1 = {}
+    for row in USDTRY_dict:
+        delta = int(row[:2]) / 100
         type = row[-1]
-        oneM = BL.strikeTransform(type,volDictionary[row][0]/100,1/12,delta)
-        threeM = BL.strikeTransform(type,volDictionary[row][1]/100,3/12,delta)
-        table[row] = [oneM,threeM]
-    volTable = pd.DataFrame.from_dict(table,orient='index',columns=['1M','3M'])
-    print(volTable)
+        oneD1 = BL.strike_transform_euro(type, USDTRY_dict[row][0] / 100, 1 / 365, delta)
+        oneW1 = BL.strike_transform_euro(type, USDTRY_dict[row][1] / 100, 7 / 365, delta)
+        twoW1 = BL.strike_transform_euro(type, USDTRY_dict[row][2] / 100, 14 / 365, delta)
+        threeW1 = BL.strike_transform_euro(type, USDTRY_dict[row][3] / 100, 21 / 365, delta)
+        oneM1 = BL.strike_transform_euro(type, USDTRY_dict[row][4] / 100, 1 / 12, delta)
+        twoM1 = BL.strike_transform_euro(type, USDTRY_dict[row][5] / 100, 2 / 12, delta)
+        threeM1 = BL.strike_transform_euro(type, USDTRY_dict[row][6] / 100, 3 / 12, delta)
+        fourM1 = BL.strike_transform_euro(type, USDTRY_dict[row][7] / 100, 4 / 12, delta)
+        fiveM1 = BL.strike_transform_euro(type, USDTRY_dict[row][8] / 100, 5 / 12, delta)
+        sixM1 = BL.strike_transform_euro(type, USDTRY_dict[row][9] / 100, 6 / 12, delta)
+        nineM1 = BL.strike_transform_euro(type, USDTRY_dict[row][10] / 100, 9 / 12, delta)
+        oneY1 = BL.strike_transform_euro(type, USDTRY_dict[row][11] / 100, 1, delta)
+        eiteenM1 = BL.strike_transform_euro(type, USDTRY_dict[row][12] / 100, 18 / 12, delta)
+        twoY1 = BL.strike_transform_euro(type, USDTRY_dict[row][13] / 100, 2, delta)
+        threeY1 = BL.strike_transform_euro(type, USDTRY_dict[row][14] / 100, 3, delta)
+        fourY1 = BL.strike_transform_euro(type, USDTRY_dict[row][15] / 100, 4, delta)
+        fiveY1 = BL.strike_transform_euro(type, USDTRY_dict[row][16] / 100, 5, delta)
+        sixY1 = BL.strike_transform_euro(type, USDTRY_dict[row][17] / 100, 6, delta)
+        sevenY1 = BL.strike_transform_euro(type, USDTRY_dict[row][18] / 100, 7, delta)
+        tenY1 = BL.strike_transform_euro(type, USDTRY_dict[row][19] / 100, 10, delta)
+        fifteenY1 = BL.strike_transform_euro(type, USDTRY_dict[row][20] / 100, 15, delta)
+        twentyY1 = BL.strike_transform_euro(type, USDTRY_dict[row][21] / 100, 20, delta)
+        twent5Y1 = BL.strike_transform_euro(type, USDTRY_dict[row][22] / 100, 25, delta)
+        thirtyY1 = BL.strike_transform_euro(type, USDTRY_dict[row][23] / 100, 30, delta)
+        table1[row] = [oneD1, oneW1, twoW1, threeW1, oneM1, twoM1, threeM1, fourM1, fiveM1, sixM1, nineM1, oneY1, eiteenM1, twoY1,
+                      threeM1, fourY1, fiveY1, sixY1, sevenY1, tenY1, fifteenY1, twentyY1, twent5Y1, thirtyY1]
+    strikeTable1 = pd.DataFrame.from_dict(table1, orient='index',
+                                         columns=['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',
+                                                  '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y',
+                                                  '25Y', '30Y'])
+    print(f'This is the transformed strike tabel: \n {strikeTable1}')
 
     # part (b)
-    strikeList = np.linspace(75, 110, 100)
-    interp1M = np.polyfit(volTable['1M'], volDF['1M']/100,2)
-    interp3M = np.polyfit(volTable['3M'], volDF['3M']/100,2)
-    oneMvol = np.poly1d(interp1M)(strikeList)
-    threeMvol = np.poly1d(interp3M)(strikeList)
-    plt.plot(strikeList,oneMvol,color='r',label='1M vol')
-    plt.plot(strikeList,threeMvol,color='b',label='3M vol')
+    strikeList1 = np.linspace(60, 150, 100)
+    interp1M1 = np.polyfit(strikeTable1['1Y'], USDTRYdf['1Y'] / 100, 2)
+    interp3M1 = np.polyfit(strikeTable1['6M'], USDTRYdf['6M'] / 100, 2)
+    oneMvol1 = np.poly1d(interp1M1)(strikeList1)
+    threeMvol1 = np.poly1d(interp3M1)(strikeList1)
+    plt.plot(strikeList1, oneMvol1, color='r', label='1M vol')
+    plt.plot(strikeList1, threeMvol1, color='b', label='3M vol')
     plt.xlabel('Strike Range')
     plt.ylabel('Volatilities')
     plt.title('Strike Against Volatility')
@@ -369,10 +461,10 @@ if __name__ == '__main__':
     plt.show()
 
     # part (c)
-    pdf1 = BL.riskNeutral(S,strikeList,1/12,r,oneMvol,0.1)
-    pdf2 = BL.riskNeutral(S,strikeList,3/12,r,threeMvol,0.1)
-    plt.plot(strikeList, pdf1, label='1M volatility',linewidth=2,color='r')
-    plt.plot(strikeList, pdf2, label='3M volatility',linewidth=2,color='b')
+    pdf1 = BL.risk_neutral_euro(S, strikeList1, 5 / 12, r, oneMvol1, 0.1)
+    pdf2 = BL.risk_neutral_euro(S, strikeList1, 0.5, r, threeMvol1, 0.1)
+    plt.plot(strikeList1, pdf1, label='1M volatility', linewidth=2, color='r')
+    plt.plot(strikeList1, pdf2, label='3M volatility', linewidth=2, color='b')
     plt.xlabel('Strike Range')
     plt.ylabel('Density')
     plt.title('Risk-Neutral Densities')
@@ -381,10 +473,10 @@ if __name__ == '__main__':
     plt.show()
 
     # part (d)
-    cpdf1 = BL.constantVolatiltiy(S, 1/12, r, 0.1824, 0.1)
-    cpdf2 = BL.constantVolatiltiy(S, 3/12, r, 0.1645, 0.1)
-    plt.plot(cpdf1[1], cpdf1[0], label='1M volatility',linewidth=2,color='r')
-    plt.plot(cpdf2[1], cpdf2[0], label='3M volatility',linewidth=2,color='b')
+    cpdf11 = BL.constant_volatiltiy_euro(S, 5 / 12, r, 0.1, 0.1)
+    cpdf21 = BL.constant_volatiltiy_euro(S, 0.5, r, 0.1, 0.1)
+    plt.plot(cpdf11[1], cpdf11[0], label='1M volatility', linewidth=2, color='r')
+    plt.plot(cpdf21[1], cpdf21[0], label='3M volatility', linewidth=2, color='b')
     plt.xlabel('Strike Range')
     plt.ylabel('Density')
     plt.title('Risk-Neutral Densities(const. vol)')
@@ -393,103 +485,91 @@ if __name__ == '__main__':
     plt.show()
 
     # part (e)
-    S = np.linspace(75, 112.5, len(pdf1))
-    p1 = BL.digitalPrice(pdf1, S, K=110,type='P')
-    p2 = BL.digitalPrice(pdf2, S,K=105,type='C')
-    v = (threeMvol+oneMvol)/2
-    eupdf = BL.riskNeutral(100,strikeList,2/12,r,v,0.1)
-    p3 = BL.euroPayoff(eupdf,S,100)
+    S = np.linspace(60, 150, len(pdf1))
+    p1 = BL.digital_price(pdf1, S, K=K, type='P')
+    p2 = BL.digital_price(pdf2, S, K=K, type='C')
+    v = (threeMvol1 + oneMvol1) / 2
+    eupdf = BL.risk_neutral_euro(100, strikeList1, 2 / 12, r, v, 0.1)
+    p3 = BL.euroPayoff(eupdf, S, K)
     print()
-    print(f'1M European Digital Put Option with Strike 110:   {p1}')
-    print(f'3M European Digital Call Option with Strike 105:  {p2}')
+    print(f'1M European Digital Put Option with Strike {K}:   {p1}')
+    print(f'3M European Digital Call Option with Strike {K}:  {p2}')
     print(f'2M European Call Option with Strike 100:          {p3}\n')
+    """
 
 
-    # problem 2
-    excel = pd.read_excel(r'C:\Users\kuntz\My Drive\Quant Stuff\MF 796 Computational Methods\MF796-repository\MF796-Computational-Methods\mf796-hw3-opt-data.xlsx')
-    HC = hestonCalibration(excel)
-    print(repr(HC))
-    whole, puts, calls = HC.data()
+    # asian option transform
+    table = {}
+    for row in USDTRY_dict:
+        delta = int(row[:2]) / 100
+        type = row[-1]
+        oneD = BL.strike_transform_asian(type, USDTRY_dict[row][0] / 100, 1 / 365, delta)
+        oneW = BL.strike_transform_asian(type, USDTRY_dict[row][1] / 100, 7 / 365, delta)
+        twoW = BL.strike_transform_asian(type, USDTRY_dict[row][2] / 100, 14 / 365, delta)
+        threeW = BL.strike_transform_asian(type, USDTRY_dict[row][3] / 100, 21 / 365, delta)
+        oneM = BL.strike_transform_asian(type, USDTRY_dict[row][4] / 100, 1 / 12, delta)
+        twoM = BL.strike_transform_asian(type, USDTRY_dict[row][5] / 100, 2 / 12, delta)
+        threeM = BL.strike_transform_asian(type, USDTRY_dict[row][6] / 100, 3 / 12, delta)
+        fourM = BL.strike_transform_asian(type, USDTRY_dict[row][7] / 100, 4 / 12, delta)
+        fiveM = BL.strike_transform_asian(type, USDTRY_dict[row][8] / 100, 5 / 12, delta)
+        sixM = BL.strike_transform_asian(type, USDTRY_dict[row][9] / 100, 6 / 12, delta)
+        nineM = BL.strike_transform_asian(type, USDTRY_dict[row][10] / 100, 9 / 12, delta)
+        oneY = BL.strike_transform_asian(type, USDTRY_dict[row][11] / 100, 1, delta)
+        eiteenM = BL.strike_transform_asian(type, USDTRY_dict[row][12] / 100, 18 / 12, delta)
+        twoY = BL.strike_transform_asian(type, USDTRY_dict[row][13] / 100, 2, delta)
+        threeY = BL.strike_transform_asian(type, USDTRY_dict[row][14] / 100, 3, delta)
+        fourY = BL.strike_transform_asian(type, USDTRY_dict[row][15] / 100, 4, delta)
+        fiveY = BL.strike_transform_asian(type, USDTRY_dict[row][16] / 100, 5, delta)
+        sixY = BL.strike_transform_asian(type, USDTRY_dict[row][17] / 100, 6, delta)
+        sevenY = BL.strike_transform_asian(type, USDTRY_dict[row][18] / 100, 7, delta)
+        tenY = BL.strike_transform_asian(type, USDTRY_dict[row][19] / 100, 10, delta)
+        fifteenY = BL.strike_transform_asian(type, USDTRY_dict[row][20] / 100, 15, delta)
+        twentyY = BL.strike_transform_asian(type, USDTRY_dict[row][21] / 100, 20, delta)
+        twent5Y = BL.strike_transform_asian(type, USDTRY_dict[row][22] / 100, 25, delta)
+        thirtyY = BL.strike_transform_asian(type, USDTRY_dict[row][23] / 100, 30, delta)
+        table[row] = [oneD, oneW, twoW, threeW, oneM, twoM, threeM, fourM, fiveM, sixM, nineM, oneY, eiteenM, twoY,
+                      threeM, fourY, fiveY, sixY, sevenY, tenY, fifteenY, twentyY, twent5Y, thirtyY]
+    strikeTable = pd.DataFrame.from_dict(table, orient='index',
+                                         columns=['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',
+                                                  '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y',
+                                                  '25Y', '30Y'])
+    print(f'This is the transformed strike tabel: \n {strikeTable}')
 
-    # part a
-    callArb = calls.groupby('expDays').apply(HC.arbitrage, type = 'c')
-    putArb = puts.groupby('expDays').apply(HC.arbitrage, type='p')
-    print(f'\n   Arbitrage Checks for the Input Data')
-    print(f'                Calls\n  {callArb}')
-    print(f'                Puts\n   {putArb}\n')
+    # part (b)
+    strikeList = np.linspace(60, 150, 100)
+    interp1M = np.polyfit(strikeTable['1Y'], USDTRYdf['1Y'] / 100, 2)
+    interp3M = np.polyfit(strikeTable['6M'], USDTRYdf['6M'] / 100, 2)
+    oneMvol = np.poly1d(interp1M)(strikeList)
+    threeMvol = np.poly1d(interp3M)(strikeList)
+    plt.plot(strikeList, oneMvol, color='r', label='1M vol')
+    plt.plot(strikeList, threeMvol, color='b', label='3M vol')
+    plt.xlabel('Strike Range')
+    plt.ylabel('Volatilities')
+    plt.title('Strike Against Volatility')
+    plt.legend()
+    plt.grid(linestyle='--', linewidth=0.75)
+    plt.show()
 
-    # part b
-    sigma = 0.2
-    alpha = 1.5
-    nu = 0.2
-    kappa = 0.5
-    rho = 0.0
-    theta = 0.2
-    lst = [kappa, theta, sigma, rho, nu]
+    # part (c)
+    pdf1 = BL.risk_neutral_asian(S, strikeList, 1, r, oneMvol, 0.1)
+    pdf2 = BL.risk_neutral_asian(S, strikeList, 0.5, r, threeMvol, 0.1)
+    plt.plot(strikeList, pdf1, label='1M volatility', linewidth=2, color='r')
+    plt.plot(strikeList, pdf2, label='3M volatility', linewidth=2, color='b')
+    plt.xlabel('Strike Range')
+    plt.ylabel('Density')
+    plt.title('Risk-Neutral Densities asian')
+    plt.legend()
+    plt.grid(linestyle='--', linewidth=0.75)
+    plt.show()
 
-    lower = [0.01, 0.01, 0.0, -1, 0.0]
-    upper = [2.5, 1, 1, 0.5, 0.5]
-    bounds = tuple(zip(lower, upper))
-    print(f'------Bounds and Initial Guesses------')
-    print(f'Lower bound {lower}')
-    print(f'Guess       {lst}')
-    print(f'Upper bound {upper}')
-    print()
-    times = 1
-    param = (alpha, calls, puts, False)
-    minValues = minimize(HC.optimizer, np.array(lst), args=param, method='SLSQP', bounds=bounds, callback=HC.cb1)
-    print('---------Minimized Outputs---------')
-    print(f'success(True/False) {minValues.success}')
-    print(f' kappa | theta | sigma | rho | nu')
-    print(f' {minValues.x[0]}  |  {minValues.x[1]}  | {minValues.x[2]}   | {minValues.x[3]} |{minValues.x[4]}')
-    print(f'minimized value  {minValues.fun}\n')
-
-    # part c & d
-    sigma = 1
-    alpha = 1.5
-    nu = 0.034
-    kappa = 1.76
-    rho = -0.81
-    theta = 0.07
-    lst1 = [kappa, theta, sigma, rho, nu]
-
-    lower1 = [0.01, 0.01, 0.0, -1, 0.0]
-    upper1 = [2.5, 1, 1, 0.5, 0.5]
-    bounds1 = tuple(zip(lower, upper))
-    print(f'-----Bounds and Initial Guesses-----')
-    print(f'Lower bound {lower1}')
-    print(f'Guess       {lst1}')
-    print(f'Upper bound {upper1}\n')
-    print()
-    param1 = (alpha, calls, puts, True)
-    minValues1 = minimize(HC.optimizer, np.array(lst1), args=param1, method='SLSQP', bounds=bounds1, callback=HC.cb2)
-    print('---------Minimized Outputs---------')
-    print(f'success(True/False) {minValues1.success}')
-    print(f'  kappa |  theta | sigma |  rho   | nu')
-    print(f' {minValues1.x[0]} | {minValues1.x[1]} | {minValues1.x[2]}  | {minValues1.x[3]}| {minValues1.x[4]}')
-    print(f'minimized value  {minValues1.fun}\n')
-
-
-    # problem 3
-    # part a & b
-    K = 275
-    S = 267.15
-    r = 0.015
-    T = 0.25
-    h =0.01
-    alpha = 1.5
-    lst = np.array([3.51,0.052,1.17,-0.77,0.034])
-    HVH = hedgingViaHeston(K,S,r,T,h,alpha,lst)
-    dh = HVH.deltaHedge()
-    vh = HVH.vegaHedge(0.01)
-    delta = euroGreeks(S, K, T, r, float(dh[1])).delta()
-    print(f'Heston delta: {dh[0]}  implied vol: {float(dh[1])}')
-    print(f'Black delta:  {delta[0]}\n')
-    b = base(S, K, T, r, float(dh[1]))
-    callv = b.euroCall(S, K, T, r, float(dh[1]))
-    print(f'euro call {callv}')
-
-
-    vega = euroGreeks(S,K,T,r,float(vh[1])).vega()
-    print(f'Heston vega:  {vh[0]}  implied vol: {float(vh[1])}')
-    print(f'Black vega:   {vega}')
+    # part (d)
+    cpdf1 = BL.constant_volatiltiy_asian(S, 1, r, 0.1, 0.1)
+    cpdf2 = BL.constant_volatiltiy_asian(S, 0.5, r, 0.1, 0.1)
+    plt.plot(cpdf1[1], cpdf1[0], label='1M volatility', linewidth=2, color='r')
+    plt.plot(cpdf2[1], cpdf2[0], label='3M volatility', linewidth=2, color='b')
+    plt.xlabel('Strike Range')
+    plt.ylabel('Density')
+    plt.title('Risk-Neutral Densities asian (const. vol)')
+    plt.legend()
+    plt.grid(linestyle='--', linewidth=0.75)
+    plt.show()
