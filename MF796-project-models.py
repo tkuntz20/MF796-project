@@ -36,12 +36,12 @@ class Base:
         USDTRY_df = pd.DataFrame.from_dict(dict, orient='index',columns=columnNames)
         return dict, USDTRY_df
 
-    def print_risk_neutral_density(self, pdf1, type1, pdf2, type2, strike_lst, expiry):
-        plt.plot(strike_lst, pdf1, label=f'{expiry} volatility {type1}', linewidth=2, color='y')
-        plt.plot(strike_lst, pdf2, label=f'{expiry} volatility {type2}', linewidth=2, color='b')
+    def print_risk_neutral_density(self, pdf1, type1, pdf2, type2, strike_lst, expiry1, expiry2):
+        plt.plot(strike_lst, pdf1, label=f'{expiry1} volatility {type1}', linewidth=2, color='y')
+        plt.plot(strike_lst, pdf2, label=f'{expiry2} volatility {type2}', linewidth=2, color='b')
         plt.xlabel('Strike Range')
         plt.ylabel('Density')
-        plt.title('Risk-Neutral Market Implied Densities')
+        plt.title(f'Risk-Neutral Densities: ({type1}{expiry1}) vs. ({type2}{expiry2})')
         plt.legend()
         plt.grid(linestyle='--', linewidth=0.75)
         plt.show()
@@ -443,9 +443,9 @@ class Breeden_Litzenberger_Euro(Options):
     def strike_transform_euro(self,type, sigma, expiry, delta):
         transform = si.norm.ppf(delta)
         if type == 'P':
-            K = 5.48 * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
+            K = self.K * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
         else:
-            K = 5.48 * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
+            K = self.K * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
         return K
 
     def gamma_transform_euro(self,S,K,T,r,sigma,h):
@@ -461,8 +461,8 @@ class Breeden_Litzenberger_Euro(Options):
             pdf.append(p)
         return pdf
 
-    def constant_volatiltiy_euro(self,S,T,r,sigma,h):
-        K = np.linspace(4, 8, 100)
+    def constant_volatiltiy_euro(self,S,strikeList,T,r,sigma,h):
+        K = strikeList
         pdf = []
         for i, k in enumerate(K):
             p = np.exp(r*T) * self.gamma_transform_euro(S, k, T, r, sigma,h)
@@ -510,9 +510,9 @@ class Breeden_Litzenberger_Asian(Options):
     def strike_transform_asian(self,type, sigma, expiry, delta):
         transform = si.norm.ppf(delta)
         if type == 'P':
-            K = 5.48 * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
+            K = self.K * np.exp(0.5 * sigma ** 2 * expiry + sigma * np.sqrt(expiry) * transform)
         else:
-            K = 5.48 * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
+            K = self.K * np.exp(0.5 * sigma ** 2 * expiry - sigma * np.sqrt(expiry) * transform)
         return K
 
     def gamma_transform_asian(self,S,K,T,r,sigma,h):
@@ -528,8 +528,8 @@ class Breeden_Litzenberger_Asian(Options):
             pdf.append(p)
         return pdf
 
-    def constant_volatiltiy_asian(self,S,T,r,sigma,h):
-        K = np.linspace(4, 8, 100)
+    def constant_volatiltiy_asian(self,S,strikeList,T,r,sigma,h):
+        K = strikeList
         pdf = []
         for i, k in enumerate(K):
             p = np.exp(r*T) * self.gamma_transform_asian(S, k, T, r, sigma,h)
@@ -575,19 +575,46 @@ class Density_Comparison(Breeden_Litzenberger_Asian, Breeden_Litzenberger_Euro):
 
         return f'nothing'
 
-    def asain_vs_euro(self):
-
-
+    def asain_vs_euro_RN(self, S, strikeList, expiry, r, vol, maturity1, maturity2):
+        pdf1 = self.risk_neutral_asian(S, strikeList, expiry, r, vol, 0.1)
+        pdf2 = self.risk_neutral_euro(S, strikeList, expiry, r, vol, 0.1)
+        self.print_risk_neutral_density(pdf1, 'asian', pdf2, 'euro', strikeList, maturity1,maturity2)
         return
 
-    def maturity_vs_maturity(self):
-
-
+    def maturity_vs_maturity_RN(self, S, strikeList, expiry1, expiry2, r, vol1, vol2, maturity1, maturity2, type):
+        if type == 'asian':
+            pdf1 = self.risk_neutral_asian(S, strikeList, expiry1, r, vol1, 0.1)
+            pdf2 = self.risk_neutral_asian(S, strikeList, expiry2, r, vol2, 0.1)
+            self.print_risk_neutral_density(pdf1, 'asian', pdf2, 'asian', strikeList, maturity1, maturity2)
+        else:
+            pdf1 = self.risk_neutral_euro(S, strikeList, expiry1, r, vol1, 0.1)
+            pdf2 = self.risk_neutral_euro(S, strikeList, expiry2, r, vol2, 0.1)
+            self.print_risk_neutral_density(pdf1, 'euro', pdf2, 'euro', strikeList, maturity1, maturity2)
         return
 
-    def constant_vs_smile(self):
-
-
+    def constant_vs_smile_vol(self, S, strikeList, expiry, r, vol,  type):
+        if type == 'asian':
+            pdf1 = self.constant_volatiltiy_asian(S, strikeList ,expiry, r, 0.18, 0.1)
+            pdf2 = self.risk_neutral_asian(S, strikeList, expiry, r, vol, 0.1)
+            plt.plot(pdf1[1], pdf1[0], label=f'{expiry1}y X {type} const. vol', linewidth=2, color='b')
+            plt.plot(strikeList, pdf2, label=f'{expiry1}y X {type} vol smile', linewidth=2, color='y')
+            plt.xlabel('Strike Range')
+            plt.ylabel('Density')
+            plt.title(f'Risk-Neutral vs Constant Vol ({expiry1}y X {type})')
+            plt.legend()
+            plt.grid(linestyle='--', linewidth=0.75)
+            plt.show()
+        else:
+            pdf1 = self.constant_volatiltiy_euro(S, strikeList, expiry, r, 0.18, 0.1)
+            pdf2 = self.risk_neutral_euro(S, strikeList, expiry, r, vol, 0.1)
+            plt.plot(pdf1[1], pdf1[0], label=f'{expiry}y X {type} const. vol', linewidth=2, color='b')
+            plt.plot(strikeList, pdf2, label=f'{expiry}y X {type} vol smile', linewidth=2, color='y')
+            plt.xlabel('Strike Range')
+            plt.ylabel('Density')
+            plt.title(f'Risk-Neutral vs Constant Vol ({expiry1}X{type})')
+            plt.legend()
+            plt.grid(linestyle='--', linewidth=0.75)
+            plt.show()
         return
 
     def strike_vs_vol(self, maturity1, maturity2, strikeList, df):
@@ -605,6 +632,8 @@ class Back_Test(Density_Comparison):
     def __repr__(self):
 
         return f'nothing'
+
+
 
 
 
@@ -675,18 +704,18 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     USDNOK_grid = pd.read_csv('USDNOK_01022019_grid.csv')
 
     base = Base(1)
-    dict, df = base.delta_options_grid(USDNOK_grid,'ExpiryStrike', Tenorlst)
+    dict, df = base.delta_options_grid(USDCHF_grid,'ExpiryStrike', Tenorlst)
 
-    S = 5.48
-    K = 5.58
-    T = 0
-    r = 0.0
-    sigma = 0
-    expiry1 = 3/12
-    expiry2 = 5/12
-    strikeList = np.linspace(4, 8, 100)
-    maturity1 = '10Y'
-    maturity2 = '10Y'
+    S = 0.98
+    K = 0.98
+    T = 0.0
+    r = 0.01
+    sigma = 0.165
+    expiry1 = 1
+    expiry2 = 5
+    strikeList = np.linspace(K*0.1, K*1.9, 100)
+    maturity1 = '1Y'
+    maturity2 = '5Y'
 
     # part (a)
     BL = Breeden_Litzenberger_Euro(S, K, T, r, sigma)
@@ -696,14 +725,16 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     # part (b)
     DC = Density_Comparison(1)
     vol1, vol2 = DC.strike_vs_vol(maturity1, maturity2,strikeList,df)
+    base.print_strike_check(vol1, 'market', vol2, 'market implied', strikeList, maturity1)
 
+    """
     # part (c)
     pdf1_euro = BL.risk_neutral_euro(S, strikeList, expiry1, r, vol1, 0.1)
     pdf2_euro = BL.risk_neutral_euro(S, strikeList, expiry2, r, vol2, 0.1)
 
     # part (d)
-    cpdf1_euro = BL.constant_volatiltiy_euro(S, expiry1, r, 0.1, 0.1)
-    cpdf2_euro = BL.constant_volatiltiy_euro(S, expiry2, r, 0.1, 0.1)
+    cpdf1_euro = BL.constant_volatiltiy_euro(S, strikeList, expiry1, r, sigma, 0.1)
+    cpdf2_euro = BL.constant_volatiltiy_euro(S, strikeList, expiry2, r, sigma, 0.1)
 
     # asian option transform
     BL_asain = Breeden_Litzenberger_Asian(S, K, T, r, sigma)
@@ -715,16 +746,17 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     # part (c)
     pdf1_asian = BL_asain.risk_neutral_asian(S, strikeList, expiry1, r, vol1, 0.1)
     pdf2_asian = BL_asain.risk_neutral_asian(S, strikeList, expiry2, r, vol2, 0.1)
-    base.print_risk_neutral_density(pdf2_asian, 'asian', pdf2_euro, 'euro', strikeList, maturity1)
+    base.print_risk_neutral_density(pdf2_asian, 'asian', pdf2_euro, 'euro', strikeList, maturity1, maturity2)
 
     # part (d)
-    cpdf1_asian = BL_asain.constant_volatiltiy_asian(S, expiry1, r, 0.1, 0.1)
-    cpdf2_asian = BL_asain.constant_volatiltiy_asian(S, expiry2, r, 0.1, 0.1)
-    base.print_risk_neutral_const(cpdf2_asian, 'asian', cpdf2_euro, 'euro', '1W')
+    cpdf1_asian = BL_asain.constant_volatiltiy_asian(S, strikeList, expiry1, r, sigma, 0.1)
+    cpdf2_asian = BL_asain.constant_volatiltiy_asian(S, strikeList, expiry2, r, sigma, 0.1)
+    base.print_risk_neutral_const(cpdf2_asian, 'asian', cpdf2_euro, 'euro', maturity1)
+    """
 
-    digit = BL.digital_price(pdf1_euro,strikeList,K,type='C')
-    print(f'the digital price is:  {digit}')
-
-
+    # density comps
+    asianveuro = DC.asain_vs_euro_RN(S, strikeList, expiry1, r, vol1, maturity1, maturity1)
+    mVm = DC.maturity_vs_maturity_RN(S, strikeList, expiry1, expiry2, r, vol1, vol2, maturity1, maturity2, 'euro')
+    cVm = DC.constant_vs_smile_vol(S, strikeList, expiry1, r, vol1, 'asian')
 
 
