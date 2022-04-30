@@ -245,7 +245,7 @@ class Options(StochasticProcess, Base):
                 sumpayoff += max(0, S[-1] - (k * S_avg))
             premium = np.exp(-r * T) * (sumpayoff / M)
             print(f'tc paths')
-            return premium
+            return float(premium)
         elif walk == 'dg':
             for j in range(M):
                 S = self.monteCarloVG_dg(S0, T, N, 1)
@@ -253,7 +253,7 @@ class Options(StochasticProcess, Base):
                 sumpayoff += max(0, S[-1] - (k * S_avg))
             premium = np.exp(-r * T) * (sumpayoff / M)
             print(f'dg paths')
-            return premium
+            return float(premium)
         else:
             for j in range(M):
                 S[0] = S0
@@ -262,7 +262,7 @@ class Options(StochasticProcess, Base):
                 sumpayoff += max(0, S[-1] - (k * S_avg)) * np.exp(-r * T)
             premium = np.exp(-r * T) * (sumpayoff / M)
             print(f'gbm paths')
-            return premium
+            return float(premium)
 
     def vanilla_Asain_Put_float(self, S0, K, T, r, sigma, N, M, k, walk):
         S = sp.random.rand(N + 1)
@@ -276,7 +276,7 @@ class Options(StochasticProcess, Base):
                 sumpayoff += max(0, (k * S_avg) - S[-1])
             premium = np.exp(-r * T) * (sumpayoff / M)
             print(f'tc paths')
-            return premium
+            return float(premium)
         elif walk == 'dg':
             for j in range(M):
                 S = self.monteCarloVG_dg(S0, T, N, 1)
@@ -284,7 +284,7 @@ class Options(StochasticProcess, Base):
                 sumpayoff += max(0, (k * S_avg) - S[-1])
             premium = np.exp(-r * T) * (sumpayoff / M)
             print(f'dg paths')
-            return premium
+            return float(premium)
         else:
             for j in range(M):
                 S[0] = S0
@@ -293,7 +293,7 @@ class Options(StochasticProcess, Base):
                 sumpayoff += max(0, (k * S_avg) - S[-1]) * np.exp(-r * T)
             premium = np.exp(-r * T) * (sumpayoff / M)
             print(f'gbm paths')
-            return premium
+            return float(premium)
 
     def geometric_Asain_Call(self, S0, K, T, r, sigma):
         sigmaG = sigma / np.sqrt(3)
@@ -575,11 +575,26 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     Tenorlst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M','1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y','25Y', '30Y']
     expirylst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M']
 
-    AO = Options(0.0, 0.25**2, 100, 100, 1, 0.0, 0.25, 252, 10000)
-    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 10000, 'dg')
+    theta = 0.0
+    sigma = 0.3106
+    kappa = sigma**2
+    S0 = 5.48
+    K = 5.58
+    T = 1
+    r = 0.0
+    k = 1
+    N = 252
+    M = 10000
+    walk = 'dg'
+    b = K/2
+
+
+
+    AO = Options(theta, kappa, S0, K, T, r, sigma, N, M)
+    A_call = AO.vanilla_Asain_Call_fixed(S0, K, T, r, sigma, N, M, walk)
     print(f'Asain call {A_call}')
 
-    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 10000, 'tc')
+    A_put = AO.vanilla_Asain_Put_fixed(S0, K, T, r, sigma, N, M, walk)
     print(f'Asain put {A_put}\n')
 
     """
@@ -592,16 +607,16 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     plt.show()
     """
 
-    print(f'the geometric call values is:       {AO.geometric_Asain_Call(100, 100, 1, 0, 0.25)}')
-    print(f'the geometric put values is:        {AO.geometric_Asain_Put(100, 100, 1, 0, 0.25)}')
-    print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 100, 1, 0, 0.25 ,253 ,1000 ,1, "tc")}')
-    print(f'the floating strike put values is:  {AO.vanilla_Asain_Put_float(100, 100, 1, 0, 0.25, 253, 1000, 1, "gbm")}')
-    print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(100, 100, 1, 0.0, 0.25 ,252 ,1000, 150)}')
-    print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(100, 100, 1, 0.0, 0.25, 252, 1000, 50)}\n')
-    print(f'the digital call values is:         {AO.digital_call(100, 100, 3/12, 0.0, 0.25, 252, 1000)}')
-    print(f'the digital put values is:          {AO.digital_put(100, 100, 1/12, 0.0, 0.25, 252, 1000)}')
-    print(f'the euro call values is:            {AO.euro_call(100, 100, 1, 0.0, 0.25)}')
-    print(f'the euro put values is:             {AO.euro_put(100, 100, 1, 0.0, 0.25)}')
+    print(f'the geometric call values is:       {AO.geometric_Asain_Call(S0, K, T, r, sigma)}')
+    print(f'the geometric put values is:        {AO.geometric_Asain_Put(S0, K, T, r, sigma)}')
+    print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(S0, K, T, r, sigma, N, M, k, walk)}')
+    print(f'the floating strike put values is:  {AO.vanilla_Asain_Put_float(S0, K, T, r, sigma, N, M, k, walk)}')
+    print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(S0, K, T, r, sigma, N, M, b)}')
+    print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(S0, K, T, r, sigma, N, M, b)}\n')
+    print(f'the digital call values is:         {AO.digital_call(S0, K, T, r, sigma, N, M)}')
+    print(f'the digital put values is:          {AO.digital_put(S0, K, T, r, sigma, N, M)}')
+    print(f'the euro call values is:            {AO.euro_call(S0, K, T, r, sigma)}')
+    print(f'the euro put values is:             {AO.euro_put(S0, K, T, r, sigma)}')
 
     # Volatility table-------------------------------------------------
     # pull in USDTRY vol grid
@@ -612,7 +627,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     #print(f'\n the df from dict from base is: \n{df}')
 
     S = 5.48
-    K = 5.48
+    K = 5.58
     T = 0
     r = 0.0
     sigma = 0
@@ -653,12 +668,12 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     # part (c)
     pdf1_asian = BL_asain.risk_neutral_asian(S, st_asian, 3/12, r, a3M_vol, 0.1)
     pdf2_asian = BL_asain.risk_neutral_asian(S, st_asian, 1/12, r, a6M_vol, 0.1)
-    base.print_risk_neutral_density(pdf2_asian, 'asian', pdf2_euro, 'euro', st_asian, '1W')
+    base.print_risk_neutral_density(pdf1_asian, 'asian', pdf1_euro, 'euro', st_asian, '1W')
 
     # part (d)
     cpdf1_asian = BL_asain.constant_volatiltiy_asian(S, 3/12, r, 0.1, 0.1)
     cpdf2_asian = BL_asain.constant_volatiltiy_asian(S, 1/12, r, 0.1, 0.1)
-    base.print_risk_neutral_const(cpdf2_asian, 'asian', cpdf2_euro, 'euro', '1W')
+    base.print_risk_neutral_const(cpdf1_asian, 'asian', cpdf1_euro, 'euro', '1W')
 
 
 
