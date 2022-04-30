@@ -545,7 +545,7 @@ class Breeden_Litzenberger_Asian(Options):
         strike_table = pd.DataFrame.from_dict(table, orient='index',columns=expirylst)
         return strike_table
 
-class Density_Comparison(Options):
+class Density_Comparison(Breeden_Litzenberger_Asian, Breeden_Litzenberger_Euro):
 
     def __init__(self, one):
         self.one = one
@@ -554,10 +554,27 @@ class Density_Comparison(Options):
 
         return f'nothing'
 
-    def convert_strike_grid(self):
+    def asain_vs_euro(self):
 
 
         return
+
+    def maturity_vs_maturity(self):
+
+
+        return
+
+    def constant_vs_smile(self):
+
+
+        return
+
+    def strike_vs_vol(self, maturity1, maturity2, strikeList, df):
+        interpolated1 = np.polyfit(euro_ST[maturity1], df[maturity1] / 100, 2)
+        interpolated2 = np.polyfit(euro_ST[maturity2], df[maturity2] / 100, 2)
+        vol1 = np.poly1d(interpolated1)(strikeList)
+        vol2 = np.poly1d(interpolated2)(strikeList)
+        return vol1, vol2
 
 class Back_Test(Density_Comparison):
 
@@ -584,7 +601,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     r = 0.0
     k = 1
     N = 252
-    M = 10000
+    M = 100
     walk = 'dg'
     b = K/2
 
@@ -621,16 +638,32 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     # Volatility table-------------------------------------------------
     # pull in USDTRY vol grid
     USDTRY_grid = pd.read_csv('USDTRY_04282022_grid.csv')
+    USDBRL_grid = pd.read_csv('USDBRL_01022019_grid.csv')
+    USDARS_grid = pd.read_csv('USDARS_01022019_grid.csv')
+    USDAUD_grid = pd.read_csv('USDAUD_01022019_grid.csv')
+    USDCAD_grid = pd.read_csv('USDCAD_01022019_grid.csv')
+    USDCHF_grid = pd.read_csv('USDCHF_01022019_grid.csv')
+    USDDKK_grid = pd.read_csv('USDDKK_01022019_grid.csv')
+    USDEUR_grid = pd.read_csv('USDEUR_01022019_grid.csv')
+    USDGBP_grid = pd.read_csv('USDGBP_01022019_grid.csv')
+    USDHUF_grid = pd.read_csv('USDHUF_01022019_grid.csv')
+    USDILS_grid = pd.read_csv('USDILS_01022019_grid.csv')
+    USDJPY_grid = pd.read_csv('USDJPY_01022019_grid.csv')
+    USDNOK_grid = pd.read_csv('USDNOK_01022019_grid.csv')
+
     base = Base(1)
-    dict, df = base.delta_options_grid(USDTRY_grid,'ExpiryStrike', Tenorlst)
-    #print(f'\n the dictionary from base: \n{dict}')
-    #print(f'\n the df from dict from base is: \n{df}')
+    dict, df = base.delta_options_grid(USDBRL_grid,'ExpiryStrike', Tenorlst)
 
     S = 5.48
     K = 5.58
     T = 0
     r = 0.0
     sigma = 0
+    expiry1 = 3/12
+    expiry2 = 1/12
+    strikeList = np.linspace(4, 8, 100)
+    maturity1 = '3M'
+    maturity2 = '1M'
 
     # part (a)
     BL = Breeden_Litzenberger_Euro(S, K, T, r, sigma)
@@ -638,45 +671,36 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     #print(f'The Asian transformed strike tabel: \n {euro_ST}')
 
     # part (b)
-    strikeList = np.linspace(4, 8, 100)
-    interp1M_euro = np.polyfit(euro_ST['3M'], df['3M'] / 100, 2)
-    interp3M_euro = np.polyfit(euro_ST['1W'], df['1W'] / 100, 2)
-    oneMvol1 = np.poly1d(interp1M_euro)(strikeList)
-    threeMvol1 = np.poly1d(interp3M_euro)(strikeList)
+    DC = Density_Comparison(1)
+    vol1, vol2 = DC.strike_vs_vol(maturity1, maturity2,strikeList,df)
 
     # part (c)
-    pdf1_euro = BL.risk_neutral_euro(S, strikeList, 3/12, r, oneMvol1, 0.1)
-    pdf2_euro = BL.risk_neutral_euro(S, strikeList, 1/12, r, threeMvol1, 0.1)
+    pdf1_euro = BL.risk_neutral_euro(S, strikeList, expiry1, r, vol1, 0.1)
+    pdf2_euro = BL.risk_neutral_euro(S, strikeList, expiry2, r, vol2, 0.1)
 
     # part (d)
-    cpdf1_euro = BL.constant_volatiltiy_euro(S, 3/12, r, 0.1, 0.1)
-    cpdf2_euro = BL.constant_volatiltiy_euro(S, 1/12, r, 0.1, 0.1)
+    cpdf1_euro = BL.constant_volatiltiy_euro(S, expiry1, r, 0.1, 0.1)
+    cpdf2_euro = BL.constant_volatiltiy_euro(S, expiry2, r, 0.1, 0.1)
 
     # asian option transform
     BL_asain = Breeden_Litzenberger_Asian(S, K, T, r, sigma)
     asain_ST = BL_asain.build_strike_table_asian(dict, expirylst)
-    #print(f'The Asian transformed strike tabel: \n {asain_ST}')
 
     # part (b)
-    st_asian = np.linspace(4, 8, 100)
-    asian_3m = np.polyfit(asain_ST['3M'], df['3M'] / 100, 2)
-    asian_6m = np.polyfit(asain_ST['1W'], df['1W'] / 100, 2)
-    a3M_vol = np.poly1d(asian_3m)(st_asian)
-    a6M_vol = np.poly1d(asian_6m)(st_asian)
-    base.print_strike_check(a3M_vol, 'asian', a6M_vol, 'asian', st_asian, '1W')
+    base.print_strike_check(vol1, 'market', vol2, 'market implied', strikeList, maturity1)
 
     # part (c)
-    pdf1_asian = BL_asain.risk_neutral_asian(S, st_asian, 3/12, r, a3M_vol, 0.1)
-    pdf2_asian = BL_asain.risk_neutral_asian(S, st_asian, 1/12, r, a6M_vol, 0.1)
-    base.print_risk_neutral_density(pdf1_asian, 'asian', pdf1_euro, 'euro', st_asian, '1W')
+    pdf1_asian = BL_asain.risk_neutral_asian(S, strikeList, expiry1, r, vol1, 0.1)
+    pdf2_asian = BL_asain.risk_neutral_asian(S, strikeList, expiry2, r, vol2, 0.1)
+    base.print_risk_neutral_density(pdf1_asian, 'asian', pdf1_euro, 'euro', strikeList, maturity1)
 
     # part (d)
-    cpdf1_asian = BL_asain.constant_volatiltiy_asian(S, 3/12, r, 0.1, 0.1)
-    cpdf2_asian = BL_asain.constant_volatiltiy_asian(S, 1/12, r, 0.1, 0.1)
-    base.print_risk_neutral_const(cpdf1_asian, 'asian', cpdf1_euro, 'euro', '1W')
+    cpdf1_asian = BL_asain.constant_volatiltiy_asian(S, expiry1, r, 0.1, 0.1)
+    cpdf2_asian = BL_asain.constant_volatiltiy_asian(S, expiry2, r, 0.1, 0.1)
+    base.print_risk_neutral_const(cpdf2_asian, 'asian', cpdf2_euro, 'euro', '1W')
 
-
-
+    digit = BL.digital_price(pdf1_euro,strikeList,K,type='C')
+    print(f'the digital price is:  {digit}')
 
 
 
