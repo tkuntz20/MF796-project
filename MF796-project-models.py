@@ -778,11 +778,11 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     T = 0.0
     r = 0.01
     sigma = 0.165
-    expiry1 = 1
-    expiry2 = 5
+    expiry1 = 9/12
+    expiry2 = 9/12
     strikeList = np.linspace(K*0.1, K*1.9, 100)
-    maturity1 = '1Y'
-    maturity2 = '5Y'
+    maturity1 = '9M'
+    maturity2 = '9M'
 
     # part (a)
     BL = Breeden_Litzenberger_Euro(S, K, T, r, sigma)
@@ -841,7 +841,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     avg = np.average(back_test)
     vanill_op = AO.euro_call(S_0, K, 9/12, r, sigma)
     exotic_op = AO.geometric_Asain_Call(S_0, K, 9/12, r, sigma)
-
+    print(f' the net premium from the exotic is: {exotic_op}\n the premium from the vanilla is {vanill_op}')
     BT = Back_Test(1)
     result = BT.asian_payoff(S_0,avg,k,S_T,exotic_op,'call', 'fixed')
     result1 = BT.euro_payoff(S_0, S_0, vanill_op, 'call')
