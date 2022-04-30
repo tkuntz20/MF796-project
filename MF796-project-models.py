@@ -771,7 +771,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     USDNOK_grid = pd.read_csv('USDNOK_01022019_grid.csv')
 
     base = Base(1)
-    dict, df = base.delta_options_grid(USDNOK_grid,'ExpiryStrike', Tenorlst)
+    dict, df = base.delta_options_grid(USDARS_grid,'ExpiryStrike', Tenorlst)
 
     S = 0.98
     K = 0.98
@@ -832,7 +832,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'         the backtest is:\n {bt}')
 
 
-    back_test = bt['USDNOK BGN Curncy']
+    back_test = bt['USDARS CURNCY']
     S_0 = back_test[back_test.index == start_date].values
     K = S_0
     S_T = back_test[back_test.index == end_date].values
