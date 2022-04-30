@@ -71,14 +71,25 @@ class Base:
 
 class StochasticProcess(Base):
 
-    def __init__(self, theta, kappa, sigma, r):
-        self.theta = theta      # the drift of the brownian motion
-        self.kappa = kappa      # varinace rate of the gamma time change
-        self.sigma = sigma      # std. dev. or the process (volatility)
-        self.r = r              # risk free rate
+    def __init__(self, theta, kappa, S0, K, T, r, sigma, N, M):
+        self.theta = theta  # drift of the brownian motion
+        self.kappa = kappa  # standard deviation of the BM
+        self.S0 = S0
+        self.K = K
+        self.T = T
+        self.sigma = sigma  # variance of the BM
+        self.r = r
+        self.N = N
+        self.M = M
 
     def __repr__(self):
         return f'nothing'
+
+    def brownian_motion(self, S, r, N, dt, sigma):
+        for i in range(N):
+            epsilon = sp.random.randn(1)
+            S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+        return S
 
     def VG_char_tcBM(self, S0, T, N):                                                       # time changed Varaince Gamma characteristic function
         # w is the weight similar to the w in Heston
@@ -98,8 +109,6 @@ class StochasticProcess(Base):
         steps = self.r * dt + self.theta * gamma_v + self.sigma * np.sqrt(gamma_v) * normal_v
         X = S0 * np.concatenate((X0, steps), axis=1).cumsum(1)
         return X.T + S0
-
-
 
     def monteCarloVG_dg(self, S0, T, N, M):                                                                                 # Monte Carlo simulation via difference of gammas
         dt = T / (N - 1)
@@ -145,78 +154,177 @@ class VarianceGamma(StochasticProcess, Base):
         avg = np.average(paths)
         return np.exp(-self.r * self.T) * sp.mean( self.K - np.maximum(paths, 0) )
 
-class Options(StochasticProcess):
+    def vanilla_Asain_Call_fixed(self, S0, K, T, r, sigma, N, M, walk):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        dt = T / N
+        if walk == 'tc':
+            for j in range(M):
+                S = self.monteCarloVG_tc(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S_avg - K)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'tc paths')
+            return premium
+        elif walk == 'dg':
+            for j in range(M):
+                S = self.monteCarloVG_dg(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S_avg - K)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'dg paths')
+            return premium
+        else:
+            for j in range(M):
+                S[0] = S0
+                S = self.brownian_motion(S, r, N, dt, sigma)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'gbm paths')
+            return premium
 
-    def __init__(self, theta, kappa, sigma, r):
-        self.theta = theta   # drift of the brownian motion
-        self.kappa = kappa   # standard deviation of the BM
-        self.sigma = sigma   # variance of the BM
+class Options(StochasticProcess, Base):
+
+    def __init__(self, theta, kappa, S0, K, T, r, sigma, N, M):
+        self.theta = theta  # drift of the brownian motion
+        self.kappa = kappa  # standard deviation of the BM
+        self.S0 = S0
+        self.K = K
+        self.T = T
+        self.sigma = sigma  # variance of the BM
         self.r = r
+        self.N = N
+        self.M = M
 
     def __repr__(self):
 
         return f'nothing'
 
-    def vanilla_Asain_Call_fixed(self, S0, K, T, r, sigma, N, M):
+    def vanilla_Asain_Call_fixed(self, S0, K, T, r, sigma, N, M, walk):
         S = sp.random.rand(N + 1)
         sumpayoff = 0.0
         premium = 0.0
         dt = T / N
-        for j in range(M):
-            S[0] = S0
-            for i in range(N):
-                epsilon = sp.random.randn(1)
-                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
-            S_avg = np.average(S)
-            sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
-        premium = np.exp(-r * T) * (sumpayoff / M)
-        print(f'average is:  {S_avg},  sum of S_path/N+1:  {np.sum(S)/(N+1)}\n')
-        return premium
+        if walk == 'tc':
+            for j in range(M):
+                S = self.monteCarloVG_tc(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S_avg - K)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'tc paths')
+            return premium
+        elif walk == 'dg':
+            for j in range(M):
+                S = self.monteCarloVG_dg(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S_avg - K)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'dg paths')
+            return premium
+        else:
+            for j in range(M):
+                S[0] = S0
+                S = self.brownian_motion(S, r, N, dt, sigma)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'gbm paths')
+            return premium
 
-    def vanilla_Asain_Put_fixed(self, S0, K, T, r, sigma, N, M):
+    def vanilla_Asain_Put_fixed(self, S0, K, T, r, sigma, N, M, walk):
         S = sp.random.rand(N + 1)
         sumpayoff = 0.0
         premium = 0.0
         dt = T / N
-        for j in range(M):
-            S[0] = S0
-            for i in range(N):
-                epsilon = sp.random.randn(1)
-                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
-            S_avg = np.average(S)
-            sumpayoff += max(0, K - S_avg) * np.exp(-r * T)
-        premium = (sumpayoff / M)
-        return premium
+        if walk == 'tc':
+            for j in range(M):
+                S = self.monteCarloVG_tc(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, K - S_avg)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'tc paths')
+            return premium
+        elif walk == 'dg':
+            for j in range(M):
+                S = self.monteCarloVG_dg(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, K - S_avg)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'dg paths')
+            return premium
+        else:
+            for j in range(M):
+                S[0] = S0
+                S = self.brownian_motion(S, r, N, dt, sigma)
+                S_avg = np.average(S)
+                sumpayoff += max(0, K - S_avg) * np.exp(-r * T)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'gbm paths')
+            return premium
 
-    def vanilla_Asain_Put_float(self, S0, K, T, r, sigma, N, M, k):
+    def vanilla_Asain_Call_float(self, S0, K, T, r, sigma, N, M, k, walk):
         S = sp.random.rand(N + 1)
         sumpayoff = 0.0
         premium = 0.0
         dt = T / N
-        for j in range(M):
-            S[0] = S0
-            for i in range(N):
-                epsilon = sp.random.randn(1)
-                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
-            S_avg = np.average(S)
-            sumpayoff += max(0, (k * S_avg) - S[-1]) * np.exp(-r * T)
-        premium = (sumpayoff / M)
-        return premium
+        if walk == 'tc':
+            for j in range(M):
+                S = self.monteCarloVG_tc(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S[-1] - (k * S_avg))
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'tc paths')
+            return premium
+        elif walk == 'dg':
+            for j in range(M):
+                S = self.monteCarloVG_dg(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S[-1] - (k * S_avg))
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'dg paths')
+            return premium
+        else:
+            for j in range(M):
+                S[0] = S0
+                S = self.brownian_motion(S, r, N, dt, sigma)
+                S_avg = np.average(S)
+                sumpayoff += max(0, S[-1] - (k * S_avg)) * np.exp(-r * T)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'gbm paths')
+            return premium
 
-    def vanilla_Asain_Call_float(self, S0, K, T, r, sigma, N, M, k):
+    def vanilla_Asain_Put_float(self, S0, K, T, r, sigma, N, M, k, walk):
         S = sp.random.rand(N + 1)
         sumpayoff = 0.0
         premium = 0.0
         dt = T / N
-        for j in range(M):
-            S[0] = S0
-            for i in range(N):
-                epsilon = sp.random.randn(1)
-                S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
-            S_avg = np.average(S)
-            sumpayoff += max(0, S[-1] - (k * S_avg)) * np.exp(-r * T)
-        premium = (sumpayoff / M)
-        return premium
+        if walk == 'tc':
+            for j in range(M):
+                S = self.monteCarloVG_tc(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, (k * S_avg) - S[-1])
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'tc paths')
+            return premium
+        elif walk == 'dg':
+            for j in range(M):
+                S = self.monteCarloVG_dg(S0, T, N, 1)
+                S_avg = np.average(S)
+                sumpayoff += max(0, (k * S_avg) - S[-1])
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'dg paths')
+            return premium
+        else:
+            for j in range(M):
+                S[0] = S0
+                S = self.brownian_motion(S, r, N, dt, sigma)
+                S_avg = np.average(S)
+                sumpayoff += max(0, (k * S_avg) - S[-1]) * np.exp(-r * T)
+            premium = np.exp(-r * T) * (sumpayoff / M)
+            print(f'gbm paths')
+            return premium
 
     def geometric_Asain_Call(self, S0, K, T, r, sigma):
         sigmaG = sigma / np.sqrt(3)
@@ -469,35 +577,30 @@ class Back_Test(Density_Comparison):
 
 if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    Tenorlst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',
-                                                   '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y',
-                                                   '25Y', '30Y']
-    expirylst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M',]
+    Tenorlst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M','1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y','25Y', '30Y']
+    expirylst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M']
 
-    AO = Options(0.0, 0.25**2, 0.25, 0.0)
-    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
+    AO = Options(0.0, 0.25**2, 100, 100, 1, 0.0, 0.25, 252, 10000)
+    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 10000, 'dg')
     print(f'Asain call {A_call}')
 
-    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
+    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 10000, 'tc')
     print(f'Asain put {A_put}\n')
 
-    s_p = StochasticProcess(0.0, 0.25**2, 0.25, 0.0)
+    """
+    s_p = StochasticProcess(0.0, 0.25**2, 100, 100, 1, 0.0, 0.25, 252, 10000)
     vg = s_p.monteCarloVG_tc(100, 1,252,100)
     plt.plot(vg)
     plt.show()
-
     vg2 = s_p.monteCarloVG_dg(100, 1, 253, 100)
     plt.plot(vg2)
     plt.show()
-    VG = VarianceGamma(0.0, 0.25**2, 100, 100, 1, 0.0, 0.25, 252, 10000)
-    print(f'vg process asian:  {VG.vanilla_Euro_Call()}')
-
-    #print(vg2)
+    """
 
     print(f'the geometric call values is:       {AO.geometric_Asain_Call(100, 100, 1, 0, 0.25)}')
     print(f'the geometric put values is:        {AO.geometric_Asain_Put(100, 100, 1, 0, 0.25)}')
-    print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 100, 1, 0, 0.25 ,253 ,1000 ,1)}')
-    print(f'the floating strike put values is:  {AO.vanilla_Asain_Put_float(100, 100, 1, 0, 0.25, 253, 1000, 1)}')
+    print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 100, 1, 0, 0.25 ,253 ,1000 ,1, "tc")}')
+    print(f'the floating strike put values is:  {AO.vanilla_Asain_Put_float(100, 100, 1, 0, 0.25, 253, 1000, 1, "gbm")}')
     print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(100, 100, 1, 0.0, 0.25 ,252 ,1000, 150)}')
     print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(100, 100, 1, 0.0, 0.25, 252, 1000, 50)}\n')
     print(f'the digital call values is:         {AO.digital_call(100, 100, 3/12, 0.0, 0.25, 252, 1000)}')
