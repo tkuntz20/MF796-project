@@ -484,7 +484,17 @@ class Breeden_Litzenberger_Euro(Options):
             eight = self.strike_transform_euro(type, dict[row][7] / 100, 4/12, delta)
             nine = self.strike_transform_euro(type, dict[row][8] / 100, 5/12, delta)
             ten = self.strike_transform_euro(type, dict[row][9] / 100, 6/12, delta)
-            table[row] = [one, two, three, four, five, six, seven, eight, nine, ten]
+            eleven = self.strike_transform_euro(type, dict[row][10] / 100, 9/12, delta)
+            y1 = self.strike_transform_euro(type, dict[row][11] / 100, 1, delta)
+            y1_5 = self.strike_transform_euro(type, dict[row][12] / 100, 1.5, delta)
+            y2 = self.strike_transform_euro(type, dict[row][13] / 100, 2, delta)
+            y3 = self.strike_transform_euro(type, dict[row][14] / 100, 3, delta)
+            y4 = self.strike_transform_euro(type, dict[row][15] / 100, 4, delta)
+            y5 = self.strike_transform_euro(type, dict[row][16] / 100, 5, delta)
+            y6 = self.strike_transform_euro(type, dict[row][17] / 100, 6, delta)
+            y7 = self.strike_transform_euro(type, dict[row][18] / 100, 7, delta)
+            y10 = self.strike_transform_euro(type, dict[row][19] / 100, 10, delta)
+            table[row] = [one, two, three, four, five, six, seven, eight, nine, ten, eleven, y1, y1_5, y2, y3, y4, y5, y6, y7, y10]
         strike_table = pd.DataFrame.from_dict(table, orient='index',columns=expirylst)
         return strike_table
 
@@ -541,7 +551,18 @@ class Breeden_Litzenberger_Asian(Options):
             eight = self.strike_transform_asian(type, dict[row][7] / 100, 4/12, delta)
             nine = self.strike_transform_asian(type, dict[row][8] / 100, 5/12, delta)
             ten = self.strike_transform_asian(type, dict[row][9] / 100, 6/12, delta)
-            table[row] = [one, two, three, four, five, six, seven, eight, nine, ten]
+            eleven = self.strike_transform_asian(type, dict[row][10] / 100, 9 / 12, delta)
+            y1 = self.strike_transform_asian(type, dict[row][11] / 100, 1, delta)
+            y1_5 = self.strike_transform_asian(type, dict[row][12] / 100, 1.5, delta)
+            y2 = self.strike_transform_asian(type, dict[row][13] / 100, 2, delta)
+            y3 = self.strike_transform_asian(type, dict[row][14] / 100, 3, delta)
+            y4 = self.strike_transform_asian(type, dict[row][15] / 100, 4, delta)
+            y5 = self.strike_transform_asian(type, dict[row][16] / 100, 5, delta)
+            y6 = self.strike_transform_asian(type, dict[row][17] / 100, 6, delta)
+            y7 = self.strike_transform_asian(type, dict[row][18] / 100, 7, delta)
+            y10 = self.strike_transform_asian(type, dict[row][19] / 100, 10, delta)
+            table[row] = [one, two, three, four, five, six, seven, eight, nine, ten, eleven, y1, y1_5, y2, y3, y4, y5,
+                          y6, y7, y10]
         strike_table = pd.DataFrame.from_dict(table, orient='index',columns=expirylst)
         return strike_table
 
@@ -589,8 +610,10 @@ class Back_Test(Density_Comparison):
 
 if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    Tenorlst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M','1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y','25Y', '30Y']
-    expirylst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M']
+    Tenorlst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',\
+                '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y', '15Y', '20Y','25Y', '30Y']
+    expirylst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',\
+                '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y']
 
     theta = 0.0
     sigma = 0.3106
@@ -652,7 +675,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     USDNOK_grid = pd.read_csv('USDNOK_01022019_grid.csv')
 
     base = Base(1)
-    dict, df = base.delta_options_grid(USDBRL_grid,'ExpiryStrike', Tenorlst)
+    dict, df = base.delta_options_grid(USDNOK_grid,'ExpiryStrike', Tenorlst)
 
     S = 5.48
     K = 5.58
@@ -660,10 +683,10 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     r = 0.0
     sigma = 0
     expiry1 = 3/12
-    expiry2 = 1/12
+    expiry2 = 5/12
     strikeList = np.linspace(4, 8, 100)
-    maturity1 = '3M'
-    maturity2 = '1M'
+    maturity1 = '10Y'
+    maturity2 = '10Y'
 
     # part (a)
     BL = Breeden_Litzenberger_Euro(S, K, T, r, sigma)
@@ -692,7 +715,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     # part (c)
     pdf1_asian = BL_asain.risk_neutral_asian(S, strikeList, expiry1, r, vol1, 0.1)
     pdf2_asian = BL_asain.risk_neutral_asian(S, strikeList, expiry2, r, vol2, 0.1)
-    base.print_risk_neutral_density(pdf1_asian, 'asian', pdf1_euro, 'euro', strikeList, maturity1)
+    base.print_risk_neutral_density(pdf2_asian, 'asian', pdf2_euro, 'euro', strikeList, maturity1)
 
     # part (d)
     cpdf1_asian = BL_asain.constant_volatiltiy_asian(S, expiry1, r, 0.1, 0.1)
