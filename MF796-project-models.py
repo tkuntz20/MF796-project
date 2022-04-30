@@ -706,8 +706,8 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     theta = 0.0
     sigma = 0.3106
     kappa = sigma**2
-    S0 = 5.48
-    K = 5.58
+    S0 = 3.888
+    K = 3.888
     T = 1
     r = 0.0
     k = 1
@@ -771,10 +771,10 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     USDNOK_grid = pd.read_csv('USDNOK_01022019_grid.csv')
 
     base = Base(1)
-    dict, df = base.delta_options_grid(USDARS_grid,'ExpiryStrike', Tenorlst)
+    dict, df = base.delta_options_grid(USDBRL_grid,'ExpiryStrike', Tenorlst)
 
-    S = 0.98
-    K = 0.98
+    S = S0
+    K = S0
     T = 0.0
     r = 0.01
     sigma = 0.165
@@ -832,7 +832,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'         the backtest is:\n {bt}')
 
 
-    back_test = bt['USDARS CURNCY']
+    back_test = bt['USDBRL CURNCY']
     S_0 = back_test[back_test.index == start_date].values
     K = S_0
     S_T = back_test[back_test.index == end_date].values
