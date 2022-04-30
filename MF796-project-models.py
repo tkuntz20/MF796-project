@@ -154,37 +154,6 @@ class VarianceGamma(StochasticProcess, Base):
         avg = np.average(paths)
         return np.exp(-self.r * self.T) * sp.mean( self.K - np.maximum(paths, 0) )
 
-    def vanilla_Asain_Call_fixed(self, S0, K, T, r, sigma, N, M, walk):
-        S = sp.random.rand(N + 1)
-        sumpayoff = 0.0
-        premium = 0.0
-        dt = T / N
-        if walk == 'tc':
-            for j in range(M):
-                S = self.monteCarloVG_tc(S0, T, N, 1)
-                S_avg = np.average(S)
-                sumpayoff += max(0, S_avg - K)
-            premium = np.exp(-r * T) * (sumpayoff / M)
-            print(f'tc paths')
-            return premium
-        elif walk == 'dg':
-            for j in range(M):
-                S = self.monteCarloVG_dg(S0, T, N, 1)
-                S_avg = np.average(S)
-                sumpayoff += max(0, S_avg - K)
-            premium = np.exp(-r * T) * (sumpayoff / M)
-            print(f'dg paths')
-            return premium
-        else:
-            for j in range(M):
-                S[0] = S0
-                S = self.brownian_motion(S, r, N, dt, sigma)
-                S_avg = np.average(S)
-                sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
-            premium = np.exp(-r * T) * (sumpayoff / M)
-            print(f'gbm paths')
-            return premium
-
 class Options(StochasticProcess, Base):
 
     def __init__(self, theta, kappa, S0, K, T, r, sigma, N, M):
@@ -341,6 +310,32 @@ class Options(StochasticProcess, Base):
         d2 = d1 - (sigmaG * np.sqrt(T))
         put = K * np.exp(-r * T) * si.norm.cdf(-d2) - (S0 * np.exp((b - r) * T) * si.norm.cdf(-d1))
         return put
+
+    def bnp_paribas_test(self, S0, K, T, r, sigma, N, M, b):
+        S = sp.random.rand(N + 1)
+        sumpayoff = 0.0
+        premium = 0.0
+        dt = T / N
+        for j in range(M):
+            S[0] = S0
+            indicator = 0.0
+            for i in range(N):
+                # indicator should act like a digital option
+                if S[i] < b:
+                    epsilon = sp.random.randn(1)
+                    S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
+                    indicator += 1
+                else:
+                    S[i + 1] = S[i] * 0
+                    indicator += 0
+            # S_avg = np.average(S)
+            S_avg = np.sum(S)
+            # print(f'average:  {S_avg}')
+            # print(f'indicator:  {indicator}')
+            sumpayoff += max(0, (S_avg / indicator) - K) * np.exp(-r * T)
+        premium = (sumpayoff / M)
+
+        return premium
 
     def bnp_paribas_Asain_call(self, S0, K, T, r, sigma, N, M, b):
         S = sp.random.rand(N + 1)
