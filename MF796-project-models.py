@@ -72,13 +72,12 @@ class Base:
 class StochasticProcess(Base):
 
     def __init__(self, theta, kappa, sigma, r):
-        self.theta = theta
-        self.kappa = kappa
-        self.sigma = sigma
-        self.r = r
+        self.theta = theta      # the drift of the brownian motion
+        self.kappa = kappa      # varinace rate of the gamma time change
+        self.sigma = sigma      # std. dev. or the process (volatility)
+        self.r = r              # risk free rate
 
     def __repr__(self):
-
         return f'nothing'
 
     def VG_char_tcBM(self, S0, T, N):                                                       # time changed Varaince Gamma characteristic function
@@ -91,16 +90,18 @@ class StochasticProcess(Base):
         sT = S0 * np.exp((self.r - w) * T + vGamma)
         return sT.reshape((N,1))
 
-    def monteCarloVG_tc(self, T, N, M):                                                                                  # time changed Brownian motion VG process
+    def monteCarloVG_tc(self, S0, T, N, M):                                                                                 # time changed Brownian motion VG process
         dt = T / (N - 1)
         X0 = np.zeros((M,1))
-        gv = si.gamma(dt / self.kappa, scale=self.kappa).rvs(size=(M, N-1))
-        nv = si.norm.rvs(loc=0, scale=1, size=(M, N-1))
-        steps = self.r * dt + self.theta * gv + self.sigma * np.sqrt(gv) * nv
-        X = np.concatenate((X0, steps), axis=1).cumsum(1)
-        return X
+        gamma_v = si.gamma(dt / self.kappa, scale=self.kappa).rvs(size=(M, N-1))
+        normal_v = si.norm.rvs(loc=0, scale=1, size=(M, N-1))
+        steps = self.r * dt + self.theta * gamma_v + self.sigma * np.sqrt(gamma_v) * normal_v
+        X = S0 * np.concatenate((X0, steps), axis=1).cumsum(1)
+        return X.T + S0
 
-    def monteCarloVG_dg(self, T, N, M):                                                                                 # Monte Carlo simulation via difference of gammas
+
+
+    def monteCarloVG_dg(self, S0, T, N, M):                                                                                 # Monte Carlo simulation via difference of gammas
         dt = T / (N - 1)
         X0 = np.zeros((M, 1))
         mu_p = 0.5 * np.sqrt(self.theta ** 2 + (2 * self.sigma ** 2) / self.kappa) + self.theta / 2
@@ -108,8 +109,41 @@ class StochasticProcess(Base):
         gvPlus = si.gamma(dt / self.kappa, scale=self.kappa*mu_q).rvs(size=(M, N-1))
         gvMinus = si.gamma(dt / self.kappa, scale=self.kappa*mu_p).rvs(size=(M, N-1))
         steps = (gvPlus - gvMinus)
-        X = np.concatenate((X0, steps), axis=1).cumsum(1)
-        return X
+        X = S0 * np.concatenate((X0, steps), axis=1).cumsum(1)
+        return X.T + S0
+
+class VarianceGamma(StochasticProcess, Base):
+
+    def __init__(self, theta, kappa, S0, K, T, r, sigma, N, M):
+        self.theta = theta  # drift of the brownian motion
+        self.kappa = kappa  # standard deviation of the BM
+        self.S0 = S0
+        self.K = K
+        self.T = T
+        self.sigma = sigma  # variance of the BM
+        self.r = r
+        self.N = N
+        self.M = M
+
+    def vanilla_Euro_Call(self):
+        rho = 1 / self.kappa
+        w = - np.log(1 - self.theta * self.kappa - self.kappa / 2 * self.sigma ** 2) / self.kappa
+        gamma_v = si.gamma(rho * self.T).rvs(self.N) / rho
+        norm_v = si.norm.rvs(0,1,self.N)
+        vg_rand = self.theta * gamma_v + self.sigma * np.sqrt(gamma_v) * norm_v
+        paths = self.S0 * np.exp((self.r - w) * self.T + vg_rand)
+        avg = np.average(paths)
+        return np.exp(-self.r * self.T) * sp.mean( np.maximum(paths - self.K, 0) )
+
+    def vanilla_Euro_Put(self):
+        rho = 1 / self.kappa
+        w = - np.log(1 - self.theta * self.kappa - self.kappa / 2 * self.sigma ** 2) / self.kappa
+        gamma_v = si.gamma(rho * self.T).rvs(self.N) / rho
+        norm_v = si.norm.rvs(0,1,self.N)
+        vg_rand = self.theta * gamma_v + self.sigma * np.sqrt(gamma_v) * norm_v
+        paths = self.S0 * np.exp((self.r - w) * self.T + vg_rand)
+        avg = np.average(paths)
+        return np.exp(-self.r * self.T) * sp.mean( self.K - np.maximum(paths, 0) )
 
 class Options(StochasticProcess):
 
@@ -135,7 +169,7 @@ class Options(StochasticProcess):
                 S[i + 1] = S[i] * (1 + r * dt + sigma * math.sqrt(dt) * epsilon)
             S_avg = np.average(S)
             sumpayoff += max(0, S_avg - K) * np.exp(-r * T)
-        premium = (sumpayoff / M)
+        premium = np.exp(-r * T) * (sumpayoff / M)
         print(f'average is:  {S_avg},  sum of S_path/N+1:  {np.sum(S)/(N+1)}\n')
         return premium
 
@@ -325,7 +359,7 @@ class Breeden_Litzenberger_Euro(Options):
         return pdf
 
     def constant_volatiltiy_euro(self,S,T,r,sigma,h):
-        K = np.linspace(3, 12, 100)
+        K = np.linspace(4, 8, 100)
         pdf = []
         for i, k in enumerate(K):
             p = np.exp(r*T) * self.gamma_transform_euro(S, k, T, r, sigma,h)
@@ -382,7 +416,7 @@ class Breeden_Litzenberger_Asian(Options):
         return pdf
 
     def constant_volatiltiy_asian(self,S,T,r,sigma,h):
-        K = np.linspace(3, 12, 100)
+        K = np.linspace(4, 8, 100)
         pdf = []
         for i, k in enumerate(K):
             p = np.exp(r*T) * self.gamma_transform_asian(S, k, T, r, sigma,h)
@@ -422,7 +456,6 @@ class Density_Comparison(Options):
 
         return
 
-
 class Back_Test(Density_Comparison):
 
     def __init__(self, one):
@@ -434,17 +467,6 @@ class Back_Test(Density_Comparison):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     Tenorlst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M', '9M',
@@ -452,44 +474,44 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
                                                    '25Y', '30Y']
     expirylst = ['1D', '1W', '2W', '3W', '1M', '2M', '3M', '4M', '5M', '6M',]
 
-    AO = Options(-0.1, 0.1, 0.25, 0.031)
-    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 1000)
+    AO = Options(0.0, 0.25**2, 0.25, 0.0)
+    A_call = AO.vanilla_Asain_Call_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
     print(f'Asain call {A_call}')
 
-    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 1000)
+    A_put = AO.vanilla_Asain_Put_fixed(100, 100, 1, 0.0, 0.25, 252, 10000)
     print(f'Asain put {A_put}\n')
 
-    s_p = StochasticProcess(-0.1, 0.1, 0.2, 0.031)
-    vg = s_p.monteCarloVG_tc(2,504,100)
-    plt.plot(vg.T)
+    s_p = StochasticProcess(0.0, 0.25**2, 0.25, 0.0)
+    vg = s_p.monteCarloVG_tc(100, 1,252,100)
+    plt.plot(vg)
     plt.show()
 
-    vg2 = s_p.monteCarloVG_dg(1, 253, 10)
-    plt.plot(vg2.T)
+    vg2 = s_p.monteCarloVG_dg(100, 1, 253, 100)
+    plt.plot(vg2)
     plt.show()
-
-    avg = np.sum(vg2)/252
+    VG = VarianceGamma(0.0, 0.25**2, 100, 100, 1, 0.0, 0.25, 252, 10000)
+    print(f'vg process asian:  {VG.vanilla_Euro_Call()}')
 
     #print(vg2)
 
     print(f'the geometric call values is:       {AO.geometric_Asain_Call(100, 100, 1, 0, 0.25)}')
     print(f'the geometric put values is:        {AO.geometric_Asain_Put(100, 100, 1, 0, 0.25)}')
-    #print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 100, 1, 0, 0.25 ,253 ,10000 ,1)}')
-    #print(f'the floating strike put values is:  {AO.vanilla_Asain_Put_float(100, 100, 1, 0, 0.25, 253, 10000, 1)}')
-    #print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(100, 100, 1, 0.0, 0.25 ,252 ,10000, 150)}')
-    #print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(100, 100, 1, 0.0, 0.25, 252, 10000, 50)}\n')
-    #print(f'the digital call values is:         {AO.digital_call(100, 100, 3/12, 0.0, 0.25, 252, 10000)}')
-    #print(f'the digital put values is:          {AO.digital_put(100, 100, 1/12, 0.0, 0.25, 252, 10000)}')
-    #print(f'the euro call values is:            {AO.euro_call(100, 100, 2/12, 0.0, 0.25)}')
-    #print(f'the euro put values is:             {AO.euro_put(100, 100, 2/12, 0.0, 0.25)}')
+    print(f'the floating strike call values is: {AO.vanilla_Asain_Call_float(100, 100, 1, 0, 0.25 ,253 ,1000 ,1)}')
+    print(f'the floating strike put values is:  {AO.vanilla_Asain_Put_float(100, 100, 1, 0, 0.25, 253, 1000, 1)}')
+    print(f'the conditional call values is:     {AO.bnp_paribas_Asain_call(100, 100, 1, 0.0, 0.25 ,252 ,1000, 150)}')
+    print(f'the conditional put values is:      {AO.bnp_paribas_Asain_put(100, 100, 1, 0.0, 0.25, 252, 1000, 50)}\n')
+    print(f'the digital call values is:         {AO.digital_call(100, 100, 3/12, 0.0, 0.25, 252, 1000)}')
+    print(f'the digital put values is:          {AO.digital_put(100, 100, 1/12, 0.0, 0.25, 252, 1000)}')
+    print(f'the euro call values is:            {AO.euro_call(100, 100, 1, 0.0, 0.25)}')
+    print(f'the euro put values is:             {AO.euro_put(100, 100, 1, 0.0, 0.25)}')
 
     # Volatility table-------------------------------------------------
     # pull in USDTRY vol grid
     USDTRY_grid = pd.read_csv('USDTRY_04282022_grid.csv')
     base = Base(1)
     dict, df = base.delta_options_grid(USDTRY_grid,'ExpiryStrike', Tenorlst)
-    print(f'\n the dictionary from base: \n{dict}')
-    print(f'\n the df from dict from base is: \n{df}')
+    #print(f'\n the dictionary from base: \n{dict}')
+    #print(f'\n the df from dict from base is: \n{df}')
 
     S = 5.48
     K = 5.48
@@ -500,10 +522,10 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     # part (a)
     BL = Breeden_Litzenberger_Euro(S, K, T, r, sigma)
     euro_ST = BL.build_strike_table_euro(dict, expirylst)
-    print(f'The Asian transformed strike tabel: \n {euro_ST}')
+    #print(f'The Asian transformed strike tabel: \n {euro_ST}')
 
     # part (b)
-    strikeList = np.linspace(3, 12, 100)
+    strikeList = np.linspace(4, 8, 100)
     interp1M_euro = np.polyfit(euro_ST['3M'], df['3M'] / 100, 2)
     interp3M_euro = np.polyfit(euro_ST['1W'], df['1W'] / 100, 2)
     oneMvol1 = np.poly1d(interp1M_euro)(strikeList)
@@ -520,10 +542,10 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     # asian option transform
     BL_asain = Breeden_Litzenberger_Asian(S, K, T, r, sigma)
     asain_ST = BL_asain.build_strike_table_asian(dict, expirylst)
-    print(f'The Asian transformed strike tabel: \n {asain_ST}')
+    #print(f'The Asian transformed strike tabel: \n {asain_ST}')
 
     # part (b)
-    st_asian = np.linspace(3, 12, 100)
+    st_asian = np.linspace(4, 8, 100)
     asian_3m = np.polyfit(asain_ST['3M'], df['3M'] / 100, 2)
     asian_6m = np.polyfit(asain_ST['1W'], df['1W'] / 100, 2)
     a3M_vol = np.poly1d(asian_3m)(st_asian)
