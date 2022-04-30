@@ -633,6 +633,65 @@ class Back_Test(Density_Comparison):
 
         return f'nothing'
 
+    def euro_payoff(self, S_T, K, premium, type):
+        if type == 'C':
+            p = S_T-K if S_T>=K else 0
+            p = p - premium
+        else:
+            p = K-S_T if S_T<=K else 0
+            p = p - premium
+        return p
+
+    def asian_payoff(self, S_T, Avg, k, K, premium, type, flavor):
+        if flavor == 'fixed':
+            if type == 'C':
+                p = Avg - K if S >= K else 0
+                p = p - premium
+            else:
+                p = K - Avg if S <= K else 0
+                p = p - premium
+        else:
+            if type == 'C':
+                p = S_T - k*Avg if S_T >= k*Avg else 0
+                p = p - premium
+            else:
+                p = k*Avg - S if S_T <= k*Avg else 0
+                p = p - premium
+
+        return p
+
+    def digital_payoff(self, S, K, premium, type):
+        if type == 'C':
+            p = 1 if S>=K else 0
+            p = p - premium
+        else:
+            p = 1 if S<=K else 0
+            p = p - premium
+        return p
+
+    def conditional_asian_payoff(self):
+
+        return
+
+    def walk_forward(self, vanilla_op, exotic_op, start_date, expiry_date):
+        vanilla_op   # vanilla option premium
+        exotic_op    # some version of the asians premium
+        start_date   # starting date
+        expiry_date  # expiry of traded options
+
+
+        # option price at start
+
+        # starting date
+
+        # pull the appropriate number of days into the future of data
+
+
+        # test the actual payoff( need payoff functions to begin with)
+
+        # roll forward?
+
+        return
 
 
 
@@ -656,7 +715,15 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     M = 100
     walk = 'dg'
     b = K/2
+    start_date = '2019-01-02'
+    end_date = '2021-01-02'
 
+    # pull in the historical data
+    historical_data = pd.read_csv('HIstorical Data.csv')
+    #historical_data = historical_data.set_index('date')
+    historical_data.index = pd.to_datetime(historical_data['date'])
+    dfSlice = historical_data[historical_data.index == '2019-01-02'].values.tolist()[0][0:]
+    print(dfSlice)
 
 
     AO = Options(theta, kappa, S0, K, T, r, sigma, N, M)
@@ -704,7 +771,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     USDNOK_grid = pd.read_csv('USDNOK_01022019_grid.csv')
 
     base = Base(1)
-    dict, df = base.delta_options_grid(USDCHF_grid,'ExpiryStrike', Tenorlst)
+    dict, df = base.delta_options_grid(USDNOK_grid,'ExpiryStrike', Tenorlst)
 
     S = 0.98
     K = 0.98
@@ -759,4 +826,26 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     mVm = DC.maturity_vs_maturity_RN(S, strikeList, expiry1, expiry2, r, vol1, vol2, maturity1, maturity2, 'euro')
     cVm = DC.constant_vs_smile_vol(S, strikeList, expiry1, r, vol1, 'asian')
 
+    # -------------------start of back testing------------------
+    bt = historical_data[historical_data.index >= start_date]
+    bt = bt[bt.index <= end_date]
+    print(f'         the backtest is:\n {bt}')
 
+    vanill_op = AO.euro_call(8.7164, 8.7164, 2, r, sigma)
+    exotic_op = AO.geometric_Asain_Call(8.7164, 8.7164, 2, r, sigma)
+    back_test = bt['USDNOK BGN Curncy']
+    avg = np.average(back_test)
+
+    BT = Back_Test(1)
+    result = BT.asian_payoff(8.5753,avg,k,8.7164,exotic_op,'call', 'fixed')
+    result1 = BT.euro_payoff(8.5753, 8.7164, vanill_op, 'call')
+    print(f'the net payoff from the exotic is: {result}\n the payoff from the vanilla is {result1}')
+
+
+
+
+
+
+
+
+    # --------------------end of back testing-------------------
