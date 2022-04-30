@@ -716,7 +716,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     walk = 'dg'
     b = K/2
     start_date = '2019-01-02'
-    end_date = '2021-01-02'
+    end_date = '2019-09-02'
 
     # pull in the historical data
     historical_data = pd.read_csv('HIstorical Data.csv')
@@ -831,15 +831,21 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     bt = bt[bt.index <= end_date]
     print(f'         the backtest is:\n {bt}')
 
-    vanill_op = AO.euro_call(8.7164, 8.7164, 2, r, sigma)
-    exotic_op = AO.geometric_Asain_Call(8.7164, 8.7164, 2, r, sigma)
+
     back_test = bt['USDNOK BGN Curncy']
+    S_0 = back_test[back_test.index == start_date].values
+    K = S_0
+    S_T = back_test[back_test.index == end_date].values
+    plt.plot(back_test)
+    plt.show()
     avg = np.average(back_test)
+    vanill_op = AO.euro_call(S_0, K, 9/12, r, sigma)
+    exotic_op = AO.geometric_Asain_Call(S_0, K, 9/12, r, sigma)
 
     BT = Back_Test(1)
-    result = BT.asian_payoff(8.5753,avg,k,8.7164,exotic_op,'call', 'fixed')
-    result1 = BT.euro_payoff(8.5753, 8.7164, vanill_op, 'call')
-    print(f'the net payoff from the exotic is: {result}\n the payoff from the vanilla is {result1}')
+    result = BT.asian_payoff(S_0,avg,k,S_T,exotic_op,'call', 'fixed')
+    result1 = BT.euro_payoff(S_0, S_0, vanill_op, 'call')
+    print(f' the net payoff from the exotic is: {result}\n the payoff from the vanilla is {result1}')
 
 
 
