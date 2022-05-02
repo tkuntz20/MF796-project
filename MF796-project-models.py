@@ -704,25 +704,26 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
                 '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y']
 
     theta = 0.0
-    sigma = 0.0587
+    sigma = 0.19104
     kappa = sigma**2
-    S0 = 0.8777
-    K = 0.8777
-    T = 1
+    S0 = 0.3264
+    K = S0
+    T = 5
     r = 0.0
     k = 1
-    N = 252
+    N = 252 * T
     M = 1000
     walk = 'gbm'
     b = K/2
-    start_date = '2019-01-02'
-    end_date = '2022-01-02'
+    start_date = '2008-01-02'
+    end_date = '2013-01-02'
 
     # pull in the historical data
-    historical_data = pd.read_csv('HIstorical Data.csv')
+    historical_data = pd.read_csv('NOKBRL_hist.csv')
+    #historical_data = pd.read_csv('HIstorical Data.csv')
     #historical_data = historical_data.set_index('date')
     historical_data.index = pd.to_datetime(historical_data['date'])
-    dfSlice = historical_data[historical_data.index == '2019-01-02'].values.tolist()[0][0:]
+    dfSlice = historical_data[historical_data.index == start_date].values.tolist()[0][0:]
     print(dfSlice)
 
     AO = Options(theta, kappa, S0, K, T, r, sigma, N, M)
@@ -742,7 +743,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     plt.plot(vg2)
     plt.title(f'Random Walks: Difference of Gammas')
     plt.show()
-    """
+    
 
     print(f'the geometric call values is:       {AO.geometric_Asain_Call(S0, K, T, r, sigma)}')
     print(f'the geometric put values is:        {AO.geometric_Asain_Put(S0, K, T, r, sigma)}')
@@ -754,13 +755,15 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'the digital put values is:          {AO.digital_put(S0, K, T, r, sigma, N, M)}')
     print(f'the euro call values is:            {AO.euro_call(S0, K, T, r, sigma)}')
     print(f'the euro put values is:             {AO.euro_put(S0, K, T, r, sigma)}')
+    """
     VG = VarianceGamma(theta, kappa, S0, K, T, r, sigma, N, M)
     print(f'the euro call (VG) values is:       {VG.vanilla_Euro_Call()}')
     print(f'the euro put (VG) values is:        {VG.vanilla_Euro_Put()}')
 
+
     # Volatility table-------------------------------------------------
     # pull in USDTRY vol grid
-    USDTRY_grid = pd.read_csv('USDTRY_04282022_grid.csv')
+    USDTRY_grid = pd.read_csv('USDTRY_01022019_grid.csv')
     USDBRL_grid = pd.read_csv('USDBRL_01022019_grid.csv')
     USDARS_grid = pd.read_csv('USDARS_01022019_grid.csv')
     USDAUD_grid = pd.read_csv('USDAUD_01022019_grid.csv')
@@ -774,19 +777,33 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     USDJPY_grid = pd.read_csv('USDJPY_01022019_grid.csv')
     USDNOK_grid = pd.read_csv('USDNOK_01022019_grid.csv')
 
+    #USDTRY_grid_08 = pd.read_csv('USDTRY_01012008_grid.csv')
+    USDBRL_grid_08 = pd.read_csv('USDBRL_01012008_grid.csv')
+    USDARS_grid_08 = pd.read_csv('USDARS_01012008_grid.csv')
+    USDAUD_grid_08 = pd.read_csv('USDAUD_01012008_grid.csv')
+    USDCAD_grid_08 = pd.read_csv('USDCAD_01012008_grid.csv')
+    USDCHF_grid_08 = pd.read_csv('USDCHF_01012008_grid.csv')
+    NOKBRL_grid_08 = pd.read_csv('NOKBRL_01012008_grid.csv')
+    USDEUR_grid_08 = pd.read_csv('USDEUR_01012008_grid.csv')
+    #USDGBP_grid_08 = pd.read_csv('USDGBP_01012008_grid.csv')
+    #USDHUF_grid_08 = pd.read_csv('USDHUF_01012008_grid.csv')
+    USDILS_grid_08 = pd.read_csv('USDILS_01012008_grid.csv')
+    #USDJPY_grid_08 = pd.read_csv('USDJPY_01012008_grid.csv')
+    USDNOK_grid_08 = pd.read_csv('USDNOK_01012008_grid.csv')
+
     base = Base(1)
-    dict, df = base.delta_options_grid(USDEUR_grid,'ExpiryStrike', Tenorlst)
+    dict, df = base.delta_options_grid(NOKBRL_grid_08,'ExpiryStrike', Tenorlst)
 
     S = S0
     K = S0
-    T = 1
+    T = T
     r = 0.0
     sigma = sigma
-    expiry1 = 6/12
-    expiry2 = 12/12
+    expiry1 = 7
+    expiry2 = 5
     strikeList = np.linspace(K*0.1, K*1.9, 100)
-    maturity1 = '6M'
-    maturity2 = '1Y'
+    maturity1 = '7Y'
+    maturity2 = '5Y'
 
     # part (a)
     BL = Breeden_Litzenberger_Euro(S, K, T, r, sigma)
@@ -797,33 +814,6 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     DC = Density_Comparison(1)
     vol1, vol2 = DC.strike_vs_vol(maturity1, maturity2,strikeList,df)
     base.print_strike_check(vol1, maturity1, vol2, maturity2, strikeList, maturity2)
-
-    """
-    # part (c)
-    pdf1_euro = BL.risk_neutral_euro(S, strikeList, expiry1, r, vol1, 0.1)
-    pdf2_euro = BL.risk_neutral_euro(S, strikeList, expiry2, r, vol2, 0.1)
-
-    # part (d)
-    cpdf1_euro = BL.constant_volatiltiy_euro(S, strikeList, expiry1, r, sigma, 0.1)
-    cpdf2_euro = BL.constant_volatiltiy_euro(S, strikeList, expiry2, r, sigma, 0.1)
-
-    # asian option transform
-    BL_asain = Breeden_Litzenberger_Asian(S, K, T, r, sigma)
-    asain_ST = BL_asain.build_strike_table_asian(dict, expirylst)
-
-    # part (b)
-    base.print_strike_check(vol1, 'market', vol2, 'market implied', strikeList, maturity1)
-
-    # part (c)
-    pdf1_asian = BL_asain.risk_neutral_asian(S, strikeList, expiry1, r, vol1, 0.1)
-    pdf2_asian = BL_asain.risk_neutral_asian(S, strikeList, expiry2, r, vol2, 0.1)
-    base.print_risk_neutral_density(pdf2_asian, 'asian', pdf2_euro, 'euro', strikeList, maturity1, maturity2)
-
-    # part (d)
-    cpdf1_asian = BL_asain.constant_volatiltiy_asian(S, strikeList, expiry1, r, sigma, 0.1)
-    cpdf2_asian = BL_asain.constant_volatiltiy_asian(S, strikeList, expiry2, r, sigma, 0.1)
-    base.print_risk_neutral_const(cpdf2_asian, 'asian', cpdf2_euro, 'euro', maturity1)
-    """
 
     # density comps
     asianveuro = DC.asain_vs_euro_RN(S, strikeList, expiry2, r, vol2, maturity2, maturity2)
@@ -836,20 +826,26 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'         the backtest data is:\n {bt}')
 
 
-    back_test = bt['USDEUR CURNCY']
+    back_test = bt['NOKBRL CURNCY']
     S_0 = back_test[back_test.index == start_date].values
     K = S_0
     S_T = back_test[back_test.index == end_date].values
     plt.plot(back_test)
     plt.show()
     avg = np.average(back_test)
-    vanill_op = AO.euro_call(S_0, K, T, r, sigma)
-    #exotic_op = AO.geometric_Asain_Call(S_0, K, 9/12, r, sigma)
+    #vanill_op = AO.euro_call(S_0, K, T, r, sigma)
+    #vanill_op = AO.euro_put(S_0, K, T, r, sigma)
+    #vanill_op = AO.digital_put(S_0, K, T, r, sigma, N, M)
+    vanill_op = AO.digital_call(S_0, K, T, r, sigma, N, M)
+
     exotic_op = AO.vanilla_Asain_Call_float(S_0, K, T, r, sigma, N, M, k, walk)
-    print(f' the net premium from the exotic is: {exotic_op}\n the premium from the vanilla is {vanill_op}')
+    #exotic_op = AO.vanilla_Asain_Call_fixed(S_0, K, T, r, sigma, N, M, walk)
+    #exotic_op = AO.vanilla_Asain_Put_float(S_0, K, T, r, sigma, N, M, k, walk)
+    #exotic_op = AO.vanilla_Asain_Put_fixed(S_0, K, T, r, sigma, N, M, walk)
+    print(f' the net premium from asian float is: {exotic_op}\n the premium from the european call is {vanill_op}')
     BT = Back_Test(1)
-    result = BT.asian_payoff(S_0,avg,k,S_T,exotic_op,'call', 'fixed')
-    result1 = BT.euro_payoff(S_0, S_T, vanill_op, 'call')
+    result = BT.asian_payoff(S_0,avg,k,S_T,exotic_op,'call', 'fixeddd')
+    result1 = BT.digital_payoff(S_0, S_T, vanill_op, 'call')
     print(f' the net payoff from the exotic is: {result}\n the payoff from the vanilla is {result1}')
 
 
