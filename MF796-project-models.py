@@ -59,11 +59,11 @@ class Base:
         return
 
     def print_strike_check(self, vol1, type1, vol2, type2, strikelst, expiry):
-        plt.plot(strikelst, vol1, color='y', label=f'{expiry} vol {type1}')
-        plt.plot(strikelst, vol2, color='b', label=f'{expiry} vol {type2}')
+        plt.plot(strikelst, vol1, color='y', label=f'vol- {type1}')
+        plt.plot(strikelst, vol2, color='b', label=f'vol- {type2}')
         plt.xlabel('Strike Range')
         plt.ylabel('Volatilities')
-        plt.title('Strike Against Volatility')
+        plt.title('Strike Against Volatility check')
         plt.legend()
         plt.grid(linestyle='--', linewidth=0.75)
         plt.show()
@@ -152,7 +152,7 @@ class VarianceGamma(StochasticProcess, Base):
         vg_rand = self.theta * gamma_v + self.sigma * np.sqrt(gamma_v) * norm_v
         paths = self.S0 * np.exp((self.r - w) * self.T + vg_rand)
         avg = np.average(paths)
-        return np.exp(-self.r * self.T) * sp.mean( self.K - np.maximum(paths, 0) )
+        return np.exp(-self.r * self.T) * sp.mean( np.maximum(self.K - paths, 0) )
 
 class Options(StochasticProcess, Base):
 
@@ -596,11 +596,11 @@ class Density_Comparison(Breeden_Litzenberger_Asian, Breeden_Litzenberger_Euro):
         if type == 'asian':
             pdf1 = self.constant_volatiltiy_asian(S, strikeList ,expiry, r, 0.18, 0.1)
             pdf2 = self.risk_neutral_asian(S, strikeList, expiry, r, vol, 0.1)
-            plt.plot(pdf1[1], pdf1[0], label=f'{expiry1}y X {type} const. vol', linewidth=2, color='b')
-            plt.plot(strikeList, pdf2, label=f'{expiry1}y X {type} vol smile', linewidth=2, color='y')
+            plt.plot(pdf1[1], pdf1[0], label=f'{expiry}y X {type} const. vol', linewidth=2, color='b')
+            plt.plot(strikeList, pdf2, label=f'{expiry}y X {type} vol smile', linewidth=2, color='y')
             plt.xlabel('Strike Range')
             plt.ylabel('Density')
-            plt.title(f'Risk-Neutral vs Constant Vol ({expiry1}y X {type})')
+            plt.title(f'Risk-Neutral vs Constant Vol ({expiry}y X {type})')
             plt.legend()
             plt.grid(linestyle='--', linewidth=0.75)
             plt.show()
@@ -611,7 +611,7 @@ class Density_Comparison(Breeden_Litzenberger_Asian, Breeden_Litzenberger_Euro):
             plt.plot(strikeList, pdf2, label=f'{expiry}y X {type} vol smile', linewidth=2, color='y')
             plt.xlabel('Strike Range')
             plt.ylabel('Density')
-            plt.title(f'Risk-Neutral vs Constant Vol ({expiry1}X{type})')
+            plt.title(f'Risk-Neutral vs Constant Vol ({expiry}X{type})')
             plt.legend()
             plt.grid(linestyle='--', linewidth=0.75)
             plt.show()
@@ -704,19 +704,19 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
                 '1Y', '18M', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '10Y']
 
     theta = 0.0
-    sigma = 0.3106
+    sigma = 0.0587
     kappa = sigma**2
-    S0 = 3.888
-    K = 3.888
+    S0 = 0.8777
+    K = 0.8777
     T = 1
     r = 0.0
     k = 1
     N = 252
-    M = 100
-    walk = 'dg'
+    M = 1000
+    walk = 'gbm'
     b = K/2
     start_date = '2019-01-02'
-    end_date = '2019-09-02'
+    end_date = '2022-01-02'
 
     # pull in the historical data
     historical_data = pd.read_csv('HIstorical Data.csv')
@@ -724,7 +724,6 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     historical_data.index = pd.to_datetime(historical_data['date'])
     dfSlice = historical_data[historical_data.index == '2019-01-02'].values.tolist()[0][0:]
     print(dfSlice)
-
 
     AO = Options(theta, kappa, S0, K, T, r, sigma, N, M)
     A_call = AO.vanilla_Asain_Call_fixed(S0, K, T, r, sigma, N, M, walk)
@@ -735,11 +734,13 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
 
     """
     s_p = StochasticProcess(0.0, 0.25**2, 100, 100, 1, 0.0, 0.25, 252, 10000)
-    vg = s_p.monteCarloVG_tc(100, 1,252,100)
+    vg = s_p.monteCarloVG_tc(100, 1,252,10)
     plt.plot(vg)
+    plt.title(f'Random Walks: Time-Changed Gamma')
     plt.show()
-    vg2 = s_p.monteCarloVG_dg(100, 1, 253, 100)
+    vg2 = s_p.monteCarloVG_dg(100, 1, 251, 10)
     plt.plot(vg2)
+    plt.title(f'Random Walks: Difference of Gammas')
     plt.show()
     """
 
@@ -753,6 +754,9 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'the digital put values is:          {AO.digital_put(S0, K, T, r, sigma, N, M)}')
     print(f'the euro call values is:            {AO.euro_call(S0, K, T, r, sigma)}')
     print(f'the euro put values is:             {AO.euro_put(S0, K, T, r, sigma)}')
+    VG = VarianceGamma(theta, kappa, S0, K, T, r, sigma, N, M)
+    print(f'the euro call (VG) values is:       {VG.vanilla_Euro_Call()}')
+    print(f'the euro put (VG) values is:        {VG.vanilla_Euro_Put()}')
 
     # Volatility table-------------------------------------------------
     # pull in USDTRY vol grid
@@ -771,18 +775,18 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     USDNOK_grid = pd.read_csv('USDNOK_01022019_grid.csv')
 
     base = Base(1)
-    dict, df = base.delta_options_grid(USDBRL_grid,'ExpiryStrike', Tenorlst)
+    dict, df = base.delta_options_grid(USDEUR_grid,'ExpiryStrike', Tenorlst)
 
     S = S0
     K = S0
-    T = 0.0
-    r = 0.01
-    sigma = 0.165
-    expiry1 = 9/12
-    expiry2 = 9/12
+    T = 1
+    r = 0.0
+    sigma = sigma
+    expiry1 = 6/12
+    expiry2 = 12/12
     strikeList = np.linspace(K*0.1, K*1.9, 100)
-    maturity1 = '9M'
-    maturity2 = '9M'
+    maturity1 = '6M'
+    maturity2 = '1Y'
 
     # part (a)
     BL = Breeden_Litzenberger_Euro(S, K, T, r, sigma)
@@ -792,7 +796,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     # part (b)
     DC = Density_Comparison(1)
     vol1, vol2 = DC.strike_vs_vol(maturity1, maturity2,strikeList,df)
-    base.print_strike_check(vol1, 'market', vol2, 'market implied', strikeList, maturity1)
+    base.print_strike_check(vol1, maturity1, vol2, maturity2, strikeList, maturity2)
 
     """
     # part (c)
@@ -822,29 +826,30 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     """
 
     # density comps
-    asianveuro = DC.asain_vs_euro_RN(S, strikeList, expiry1, r, vol1, maturity1, maturity1)
+    asianveuro = DC.asain_vs_euro_RN(S, strikeList, expiry2, r, vol2, maturity2, maturity2)
     mVm = DC.maturity_vs_maturity_RN(S, strikeList, expiry1, expiry2, r, vol1, vol2, maturity1, maturity2, 'euro')
-    cVm = DC.constant_vs_smile_vol(S, strikeList, expiry1, r, vol1, 'asian')
+    cVm = DC.constant_vs_smile_vol(S, strikeList, expiry2, r, vol2, 'asian')
 
     # -------------------start of back testing------------------
     bt = historical_data[historical_data.index >= start_date]
     bt = bt[bt.index <= end_date]
-    print(f'         the backtest is:\n {bt}')
+    print(f'         the backtest data is:\n {bt}')
 
 
-    back_test = bt['USDBRL CURNCY']
+    back_test = bt['USDEUR CURNCY']
     S_0 = back_test[back_test.index == start_date].values
     K = S_0
     S_T = back_test[back_test.index == end_date].values
     plt.plot(back_test)
     plt.show()
     avg = np.average(back_test)
-    vanill_op = AO.euro_call(S_0, K, 9/12, r, sigma)
-    exotic_op = AO.geometric_Asain_Call(S_0, K, 9/12, r, sigma)
+    vanill_op = AO.euro_call(S_0, K, T, r, sigma)
+    #exotic_op = AO.geometric_Asain_Call(S_0, K, 9/12, r, sigma)
+    exotic_op = AO.vanilla_Asain_Call_float(S_0, K, T, r, sigma, N, M, k, walk)
     print(f' the net premium from the exotic is: {exotic_op}\n the premium from the vanilla is {vanill_op}')
     BT = Back_Test(1)
     result = BT.asian_payoff(S_0,avg,k,S_T,exotic_op,'call', 'fixed')
-    result1 = BT.euro_payoff(S_0, S_0, vanill_op, 'call')
+    result1 = BT.euro_payoff(S_0, S_T, vanill_op, 'call')
     print(f' the net payoff from the exotic is: {result}\n the payoff from the vanilla is {result1}')
 
 
