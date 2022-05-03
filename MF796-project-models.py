@@ -1,6 +1,6 @@
 """"
 Group term-project for MF 796 Computational Methods
-@Authers: Kibae Kim, Tiaga Schwarz, Karen Mu, Thomas Kuntz
+@Authers: Thomas Kuntz
 """
 
 import pandas as pd
