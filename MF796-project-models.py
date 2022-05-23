@@ -733,7 +733,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     A_put = AO.vanilla_Asain_Put_fixed(S0, K, T, r, sigma, N, M, walk)
     print(f'Asain put {A_put}\n')
 
-    """
+    #"""
     s_p = StochasticProcess(0.0, 0.25**2, 100, 100, 1, 0.0, 0.25, 252, 10000)
     vg = s_p.monteCarloVG_tc(100, 1,252,10)
     plt.plot(vg)
@@ -755,7 +755,7 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     print(f'the digital put values is:          {AO.digital_put(S0, K, T, r, sigma, N, M)}')
     print(f'the euro call values is:            {AO.euro_call(S0, K, T, r, sigma)}')
     print(f'the euro put values is:             {AO.euro_put(S0, K, T, r, sigma)}')
-    """
+    #"""
     VG = VarianceGamma(theta, kappa, S0, K, T, r, sigma, N, M)
     print(f'the euro call (VG) values is:       {VG.vanilla_Euro_Call()}')
     print(f'the euro put (VG) values is:        {VG.vanilla_Euro_Put()}')
