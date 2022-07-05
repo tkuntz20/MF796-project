@@ -725,6 +725,9 @@ if __name__ == '__main__':      # ++++++++++++++++++++++++++++++++++++++++++++++
     historical_data.index = pd.to_datetime(historical_data['date'])
     dfSlice = historical_data[historical_data.index == start_date].values.tolist()[0][0:]
     print(dfSlice)
+    historical_data.describe()
+    historical_data.info()
+    historical_data.head()
 
     AO = Options(theta, kappa, S0, K, T, r, sigma, N, M)
     A_call = AO.vanilla_Asain_Call_fixed(S0, K, T, r, sigma, N, M, walk)
